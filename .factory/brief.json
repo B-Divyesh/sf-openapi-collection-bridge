@@ -1,0 +1,10 @@
+{
+  "slug": "openapi-collection-bridge",
+  "title": "OpenAPI Collection Bridge",
+  "artifact_class": "cli",
+  "user": "API teams moving between local API clients who need to transfer an OpenAPI spec and existing request collections without silently losing authentication, examples, variables, or tests.",
+  "smallest_useful_product": "A local converter for OpenAPI, Postman, Insomnia, Bruno, and cURL that emits destination files plus a human-readable inventory of preserved, transformed, and unsupported semantics.",
+  "success_measure": "At least 95% of requests and named environments in a pilot collection convert automatically, with every unsupported feature explicitly listed.",
+  "monetization": "one-time",
+  "constraints": "Strip credentials by default; deterministic conversion and source-control-friendly output are required."
+}
