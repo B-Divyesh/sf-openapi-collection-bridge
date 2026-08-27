@@ -1,0 +1,38 @@
+import AxeBuilder from '@axe-core/playwright';
+import { chromium } from 'playwright';
+
+const base = process.env.AUDIT_URL ?? 'http://127.0.0.1:5173';
+const browser = await chromium.launch();
+const consoleErrors = [];
+const results = {};
+
+for (const path of ['/', '/privacy/', '/terms/']) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  page.on('console', message => { if (message.type() === 'error') consoleErrors.push(`${path}: ${message.text()}`); });
+  page.on('pageerror', error => consoleErrors.push(`${path}: ${error.message}`));
+  await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+  const audit = await new AxeBuilder({ page }).analyze();
+  results[path] = audit.violations.filter(item => ['serious', 'critical'].includes(item.impact ?? '')).map(item => ({ id: item.id, impact: item.impact, nodes: item.nodes.map(node => node.target) }));
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+  if (overflow) consoleErrors.push(`${path}: horizontal overflow at 390px`);
+  if (path === '/') {
+    await page.keyboard.press('Tab');
+    const firstFocus = await page.evaluate(() => document.activeElement?.textContent?.trim());
+    if (firstFocus !== 'Skip to main content') consoleErrors.push(`/: first keyboard target was ${firstFocus}`);
+    await page.locator('#convert-button').click();
+    if (!await page.locator('#conversion-result').isVisible()) consoleErrors.push('/: local conversion result did not appear');
+    const resultAudit = await new AxeBuilder({ page }).include('#conversion-result').analyze();
+    for (const item of resultAudit.violations.filter(item => ['serious', 'critical'].includes(item.impact ?? ''))) results[path].push({ id: item.id, impact: item.impact, nodes: item.nodes.map(node => node.target) });
+    await context.setOffline(true);
+    await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+    if (!await page.locator('#offline-note').isVisible()) consoleErrors.push('/: offline guidance did not appear');
+    await context.setOffline(false);
+  }
+  await context.close();
+}
+
+await browser.close();
+const serious = Object.values(results).flat();
+console.log(JSON.stringify({ seriousOrCritical: serious, consoleErrors, routes: results }, null, 2));
+if (serious.length || consoleErrors.length) process.exit(1);

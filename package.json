@@ -1,0 +1,21 @@
+{
+  "name": "openapi-collection-bridge-site",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config site/vite.config.ts",
+    "test": "cargo test --manifest-path cli/Cargo.toml && vitest run --config site/vite.config.ts",
+    "build:cli": "cargo build --release --manifest-path cli/Cargo.toml",
+    "build:site": "vite build --config site/vite.config.ts",
+    "build": "npm run build:cli && npm run build:site",
+    "test:a11y": "node site/audit.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "playwright": "1.58.2",
+    "typescript": "5.9.2",
+    "vite": "7.3.6",
+    "vitest": "3.2.7"
+  }
+}
