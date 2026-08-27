@@ -827,6 +827,8 @@ fn import_curl(text: &str) -> Result<(Collection, Vec<Finding>)> {
         method: "GET".into(),
         ..Default::default()
     };
+    let mut unsupported = vec![];
+    let mut form_parts = vec![];
     let mut i = 1;
     while i < tokens.len() {
         match tokens[i].as_str() {
@@ -844,7 +846,7 @@ fn import_curl(text: &str) -> Result<(Collection, Vec<Finding>)> {
                     req.headers.insert(k.trim().into(), v.trim().into());
                 }
             }
-            "-d" | "--data" | "--data-raw" | "--data-binary" => {
+            "-d" | "--data" | "--data-raw" | "--data-binary" | "--data-urlencode" => {
                 i += 1;
                 req.body = Some(Body {
                     mime: "application/json".into(),
@@ -856,6 +858,16 @@ fn import_curl(text: &str) -> Result<(Collection, Vec<Finding>)> {
                 if req.method == "GET" {
                     req.method = "POST".into();
                 }
+            }
+            "-F" | "--form" => {
+                i += 1;
+                form_parts.push(
+                    tokens
+                        .get(i)
+                        .context("missing form value after -F")?
+                        .clone(),
+                );
+                req.method = "POST".into();
             }
             "-u" | "--user" => {
                 i += 1;
@@ -875,7 +887,54 @@ fn import_curl(text: &str) -> Result<(Collection, Vec<Finding>)> {
                 i += 1;
                 req.url = tokens.get(i).context("missing URL after --url")?.clone();
             }
-            flag if flag.starts_with('-') => {}
+            "--oauth2-bearer" => {
+                i += 1;
+                req.auth = Some(Auth {
+                    kind: "bearer".into(),
+                    fields: [(
+                        "token".into(),
+                        tokens.get(i).context("missing bearer token")?.clone(),
+                    )]
+                    .into_iter()
+                    .collect(),
+                });
+            }
+            "-b" | "--cookie" => {
+                i += 1;
+                req.headers.insert(
+                    "Cookie".into(),
+                    tokens.get(i).context("missing cookie value")?.clone(),
+                );
+            }
+            "-A" | "--user-agent" => {
+                i += 1;
+                req.headers.insert(
+                    "User-Agent".into(),
+                    tokens.get(i).context("missing user-agent value")?.clone(),
+                );
+            }
+            "-e" | "--referer" => {
+                i += 1;
+                req.headers.insert(
+                    "Referer".into(),
+                    tokens.get(i).context("missing referer value")?.clone(),
+                );
+            }
+            "-G" | "--get" => req.method = "GET".into(),
+            "-I" | "--head" => req.method = "HEAD".into(),
+            "-L" | "--location" | "-k" | "--insecure" | "-s" | "--silent" | "-S"
+            | "--show-error" | "--compressed" | "--http1.1" | "--http2" => {
+                unsupported.push(tokens[i].clone());
+            }
+            "-o" | "--output" | "-x" | "--proxy" | "--connect-timeout" | "--max-time"
+            | "--cert" | "--key" | "--cacert" | "--cookie-jar" | "--config" => {
+                unsupported.push(tokens[i].clone());
+                i += 1;
+                if i >= tokens.len() {
+                    bail!("missing value after cURL flag '{}';", tokens[i - 1]);
+                }
+            }
+            flag if flag.starts_with('-') => unsupported.push(flag.into()),
             value
                 if value.starts_with("http://")
                     || value.starts_with("https://")
@@ -890,6 +949,12 @@ fn import_curl(text: &str) -> Result<(Collection, Vec<Finding>)> {
     if req.url.is_empty() {
         bail!("cURL command contains no URL");
     }
+    if !form_parts.is_empty() {
+        req.body = Some(Body {
+            mime: "multipart/form-data".into(),
+            text: form_parts.join("\n"),
+        });
+    }
     if let Some(content_type) = req
         .headers
         .iter()
@@ -900,7 +965,21 @@ fn import_curl(text: &str) -> Result<(Collection, Vec<Finding>)> {
             body.mime = content_type;
         }
     }
-    Ok((Collection { name: "cURL import".into(), source: Some(Format::Curl), requests: vec![req], environments: vec![] }, vec![finding(FindingStatus::Preserved, "cURL request", "Method, URL, headers, auth, and request data were parsed without executing shell code."), finding(FindingStatus::Unsupported, "cURL transport flags", "Redirect, TLS, proxy, cookie-jar, and output-control flags are not collection semantics and are not imported.")]))
+    let mut findings = vec![finding(FindingStatus::Preserved, "cURL request", "Method, URL, headers, auth, form fields, and request data were parsed without executing shell code.")];
+    if !unsupported.is_empty() {
+        unsupported.sort();
+        unsupported.dedup();
+        findings.push(finding(FindingStatus::Unsupported, "cURL transport flags", format!("These transport or shell-control flags are not collection semantics and were not imported: {}.", unsupported.join(", "))));
+    }
+    Ok((
+        Collection {
+            name: "cURL import".into(),
+            source: Some(Format::Curl),
+            requests: vec![req],
+            environments: vec![],
+        },
+        findings,
+    ))
 }
 
 fn str_at<'a>(value: &'a Value, pointer: &str) -> Option<&'a str> {

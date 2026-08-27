@@ -32,6 +32,17 @@ for (const path of ['/', '/privacy/', '/terms/']) {
   await context.close();
 }
 
+{
+  const context = await browser.newContext();
+  await context.route('https://pilot-api.sociobot.in/**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ valid: true, reason: 'ok', expires_at: null }) }));
+  const page = await context.newPage();
+  await page.goto(`${base}/?license=test-license`, { waitUntil: 'networkidle' });
+  if (new URL(page.url()).searchParams.has('license')) consoleErrors.push('/: returned license was not stripped from the URL');
+  if (await page.evaluate(() => localStorage.getItem('sb_license:openapi-collection-bridge')) !== 'test-license') consoleErrors.push('/: returned license was not stored');
+  if (!await page.locator('#pro-tools').isVisible()) consoleErrors.push('/: valid returned license did not unlock Pro tools');
+  await context.close();
+}
+
 await browser.close();
 const serious = Object.values(results).flat();
 console.log(JSON.stringify({ seriousOrCritical: serious, consoleErrors, routes: results }, null, 2));

@@ -60,7 +60,7 @@ npm test
 npm run build
 ```
 
-`npm test` runs the CLI tests and site tests. `npm run build` builds the release CLI, packages its source crate, and writes the static site to `dist/site/` with `index.html` at that root. `npm run build:site` builds only the Vite site.
+`npm test` runs the CLI tests and site tests. `npm run build` builds the release CLI and writes the static site to `dist/site/` with `index.html` at that root. `npm run build:site` builds only the Vite site.
 
 No conversion input leaves the browser or CLI. There is no telemetry. The optional one-time Pro license supports development and unlocks batch migration workflow guidance; core conversion, reports, credential stripping, accessibility, and export remain free.
 
