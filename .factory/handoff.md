@@ -9,7 +9,7 @@ The release-blocking findings recorded in the independent verification report fo
 - **Evidence integrity:** Every migrated auth item has a request-specific report row. Native mappings are marked transformed with a description of the native scheme and extension; unrecognised formats are marked unsupported and make `--fail-on-loss` exit 4.
 - **P2 exit contract:** parse/detection/inventory errors exit 2; write/export errors exit 3; loss-policy errors exit 4, matching the README.
 - **P2 mobile targets:** footer links are at least 44 × 44 CSS pixels at 390px (including short “Home” links on legal pages).
-- **P2 response policy:** `site/public/_headers` ships a self-only CSP, restrictive Permissions Policy, nosniff/referrer protections, immutable caching for `/assets/*` and image assets, and revalidation for HTML and the service worker. It is copied to `dist/site/_headers` by the production build.
+- **P2 response policy:** `site/public/staticwebapp.config.json` configures Azure Static Web Apps with a self-only CSP, restrictive Permissions Policy, nosniff/referrer protections, immutable caching for `/assets/*` and image assets, and revalidation for HTML and the service worker. `site/public/_headers` supplies the same policy for compatible non-Azure static hosts. Both are copied into `dist/site/` by the production build.
 
 ## Regression coverage
 
@@ -52,6 +52,6 @@ Production assets are 10,777 B JavaScript, 10,483 B CSS, and 23,186 B responsive
 
 - The CLI remains local-only, deterministic, credential-redacting by default, and has no telemetry. The browser specimen remains local-only; billing is the only optional external connection and is permitted by CSP.
 - The notebook visual system, original image provenance, static artifact class, and factory deployment class are unchanged.
-- Build output is `dist/site/`; deploy that directory as the static site. The `_headers` file is part of that output and must be honored by the static host.
+- Build output is `dist/site/`; deploy that directory as the static site. `staticwebapp.config.json` is part of that output and must be honored by Azure Static Web Apps; `_headers` is included for compatible static hosts.
 - Build production billing with `VITE_BILLING_BASE_URL=https://api.sociobot.in/api/v1` after the factory has registered the live product. The source defaults to the pilot endpoint for staging.
 - Do not publish from this checkout. The factory can publish with `cargo package --manifest-path cli/Cargo.toml --allow-dirty` and attach `target/release/ocb` to the release.

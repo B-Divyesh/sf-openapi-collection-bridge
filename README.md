@@ -66,7 +66,7 @@ No conversion input leaves the browser or CLI. There is no telemetry. The option
 
 ## Deployment and publishing
 
-Deploy `dist/site/` as a static site. The included `_headers` file supplies the restrictive CSP/Permissions Policy, revalidation for HTML/service worker, and immutable caching for hashed assets on compatible static hosts. The factory owns registry and release credentials; workers must not publish. Validate the Rust package with:
+Deploy `dist/site/` as a static site. The included `staticwebapp.config.json` (Azure Static Web Apps) and `_headers` (compatible static hosts) supply the restrictive CSP/Permissions Policy, revalidation for HTML/service worker, and immutable caching for hashed assets. The factory owns registry and release credentials; workers must not publish. Validate the Rust package with:
 
 ```sh
 cargo package --manifest-path cli/Cargo.toml --allow-dirty

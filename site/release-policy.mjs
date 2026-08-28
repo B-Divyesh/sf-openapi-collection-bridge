@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, 'public');
 const headers = readFileSync(resolve(root, '_headers'), 'utf8');
+const swaConfig = readFileSync(resolve(root, 'staticwebapp.config.json'), 'utf8');
 const css = readFileSync(resolve(import.meta.dirname, 'src/style.css'), 'utf8');
 const requirements = [
   ["Content-Security-Policy: default-src 'self'", 'restrictive CSP'],
@@ -12,6 +13,9 @@ const requirements = [
 ];
 for (const [needle, label] of requirements) {
   if (!headers.includes(needle)) throw new Error(`Missing ${label} policy`);
+}
+for (const [needle, label] of [["Content-Security-Policy", 'Azure CSP'], ["Permissions-Policy", 'Azure Permissions Policy'], ["max-age=31536000, immutable", 'Azure immutable caching'], ["/sw.js", 'Azure service-worker cache policy']]) {
+  if (!swaConfig.includes(needle)) throw new Error(`Missing ${label} policy`);
 }
 if (!css.includes('footer a { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px;')) {
   throw new Error('Footer link 44px touch-target rule is missing');
