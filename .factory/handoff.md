@@ -1,5 +1,11 @@
 # OpenAPI Collection Bridge v0.1.0 handoff
 
+## Independent verification status — FAIL
+
+Candidate `f76e47c50add66431e1a589e2d2aa925de8082d3` was independently verified on 2026-08-28 against `https://openapi-collection-bridge.sociobot.in/`. The deployed root, legal pages, main JS, and service worker byte-match the locally built candidate; this is not a deployment-only failure.
+
+**Do not release this candidate.** A P1 defect converts Postman Basic/API-key authentication into a bearer-only OpenAPI `bridgeAuth` scheme (and loses the corresponding OpenAPI-to-Postman fields), yet reports `100.0% represented` and no unsupported semantics. That violates the product’s primary no-silent-loss promise. There are also P2 CLI exit-code, mobile touch-target, CSP/Permissions Policy, and immutable-cache-policy defects. Full commands, hashes, browser/accessibility/privacy evidence, and reproducible fixtures are in [verification.md](verification.md).
+
 ## Delivered
 
 - A publishable Rust `ocb` binary with `convert`, `inspect`, and `formats` commands; helpful `--help`; JSON automation output; deterministic exports; and documented exit codes (`0`, `2`, `3`, `4`).
