@@ -46,6 +46,8 @@ AUDIT_URL=http://127.0.0.1:4173 npm run test:a11y
 
 `verify-url.sh` reported HTTP 200 in 571 ms, no browser errors, one title/lang/h1/main, image alt coverage, and labeled buttons. The Axe/Playwright audit reported zero serious/critical violations and zero console/page errors on `/`, `/privacy/`, and `/terms/`; it also passed local conversion, license return handling, 390×844 no-overflow, 44px footer targets, keyboard skip-link first focus, service-worker warm reload, and offline shell reload. A separate 1440×960 Chromium smoke test found one h1, a main landmark, the expected title/lang, skip link as first focus, and no console errors.
 
+The committed repair was deployed to `https://openapi-collection-bridge.sociobot.in/` with the factory static deployment utility on 2026-08-28. The live index SHA-256 is `2440b58693b84bf2a39f65cc071bb44fc37fdc714a1922fd3df7c1d823e9955f`, matching `dist/site/index.html`. Live response checks confirmed the CSP, Permissions Policy, `Cache-Control: public, max-age=31536000, immutable` for `/assets/main-DUFgKX9I.js`, and `Cache-Control: public, max-age=0, must-revalidate` for `/sw.js`. Live `verify-url.sh` passed in 827 ms with no browser errors; the live Axe/Playwright audit also passed with zero serious/critical violations or console/page errors.
+
 Production assets are 10,777 B JavaScript, 10,483 B CSS, and 23,186 B responsive hero image (all uncompressed), within the 200/50/300 KB budgets. `npm audit` after `npm ci` found zero vulnerabilities.
 
 ## Product and release notes
