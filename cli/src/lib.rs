@@ -4,12 +4,36 @@ pub mod model;
 
 use anyhow::{bail, Context, Result};
 use model::{finding, BridgeResult, Collection, Counts, Finding, FindingStatus, Format};
+use std::error::Error;
 use std::ffi::OsString;
+use std::fmt::{Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 pub use export::export_collection;
 pub use import::{detect_format, import_collection};
+
+/// An input that cannot be parsed, detected, or inventoried. This is kept
+/// distinct from export/write failures so the CLI's documented exit contract
+/// is safe for CI callers.
+#[derive(Debug)]
+pub struct InvalidInput(pub String);
+
+impl Display for InvalidInput {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl Error for InvalidInput {}
+
+pub fn invalid_input(message: impl Into<String>) -> anyhow::Error {
+    anyhow::Error::new(InvalidInput(message.into()))
+}
+
+pub fn is_invalid_input(error: &anyhow::Error) -> bool {
+    error.downcast_ref::<InvalidInput>().is_some()
+}
 
 pub fn convert(
     input: &str,
@@ -19,12 +43,16 @@ pub fn convert(
     environment_files: &[PathBuf],
     include_secrets: bool,
 ) -> Result<(BridgeResult, Vec<Finding>)> {
-    let source = from.or_else(|| detect_format(input)).context(
-        "could not detect the source format; pass --from openapi|postman|insomnia|bruno|curl",
-    )?;
-    let (mut collection, mut findings) = import_collection(input, source)?;
+    let source = from.or_else(|| detect_format(input)).ok_or_else(|| {
+        invalid_input(
+            "could not detect the source format; pass --from openapi|postman|insomnia|bruno|curl",
+        )
+    })?;
+    let (mut collection, mut findings) =
+        import_collection(input, source).map_err(|error| invalid_input(format!("{error:#}")))?;
     for env_file in environment_files {
-        import::add_environment(&mut collection, env_file)?;
+        import::add_environment(&mut collection, env_file)
+            .map_err(|error| invalid_input(format!("{error:#}")))?;
     }
     if include_secrets {
         findings.push(finding(
@@ -62,10 +90,12 @@ pub fn convert(
 }
 
 pub fn inspect(input: &str, from: Option<Format>) -> Result<(Collection, Vec<Finding>)> {
-    let source = from.or_else(|| detect_format(input)).context(
-        "could not detect the source format; pass --from openapi|postman|insomnia|bruno|curl",
-    )?;
-    import_collection(input, source)
+    let source = from.or_else(|| detect_format(input)).ok_or_else(|| {
+        invalid_input(
+            "could not detect the source format; pass --from openapi|postman|insomnia|bruno|curl",
+        )
+    })?;
+    import_collection(input, source).map_err(|error| invalid_input(format!("{error:#}")))
 }
 
 fn report_path(output: &Path, format: Format) -> PathBuf {

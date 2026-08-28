@@ -23,6 +23,7 @@ pub fn export_collection(
 
 fn export_openapi(collection: &Collection, output: &Path) -> Result<Vec<Finding>> {
     let mut paths = Map::new();
+    let mut security_schemes = Map::new();
     let mut findings = vec![finding(FindingStatus::Preserved, "requests", "Request methods, paths, headers, query values, and bodies were represented as OpenAPI operations.")];
     for request in &collection.requests {
         let path = url_path(&request.url);
@@ -59,15 +60,28 @@ fn export_openapi(collection: &Collection, output: &Path) -> Result<Vec<Finding>
                 "Named examples became OpenAPI response examples grouped by status.",
             ));
         }
-        if request.auth.is_some() {
+        if let Some(auth) = &request.auth {
+            let scheme_name = openapi_security_scheme(auth, &mut security_schemes);
             operation
                 .as_object_mut()
                 .unwrap()
-                .insert("security".into(), json!([{"bridgeAuth":[]} ]));
+                .insert("security".into(), json!([{scheme_name:[]} ]));
+            // OpenAPI security schemes describe how a client authenticates, but do
+            // not carry request-specific credentials. Keep those fields in a
+            // namespaced extension so a Bridge round trip is lossless while native
+            // clients still receive the standard scheme and its API-key location.
+            operation
+                .as_object_mut()
+                .unwrap()
+                .insert("x-bridge-auth-fields".into(), json!(auth.fields));
             findings.push(finding(
-                FindingStatus::Transformed,
-                "authentication",
-                "Client authentication became an OpenAPI bridgeAuth security requirement.",
+                if openapi_auth_is_native(auth) {
+                    FindingStatus::Transformed
+                } else {
+                    FindingStatus::Unsupported
+                },
+                format!("request '{}' {} authentication", request.name, auth.kind),
+                openapi_auth_detail(auth),
             ));
         }
         if !request.scripts.is_empty() {
@@ -119,10 +133,108 @@ fn export_openapi(collection: &Collection, output: &Path) -> Result<Vec<Finding>
         "info":{"title":collection.name, "version":"1.0.0", "x-generated-by":"openapi-collection-bridge/0.1.0"},
         "servers":servers,
         "paths":paths,
-        "components":{"securitySchemes":{"bridgeAuth":{"type":"http", "scheme":"bearer"}}}
+        "components":{"securitySchemes":security_schemes}
     });
     write_json(output, &doc)?;
     Ok(findings)
+}
+
+fn openapi_security_scheme(auth: &Auth, schemes: &mut Map<String, Value>) -> String {
+    // A request-specific name avoids incorrectly merging API keys with different
+    // names or locations. The stable suffix keeps checked-in exports deterministic.
+    let name = format!(
+        "bridge_{}_{}",
+        slug(&auth.kind),
+        &stable_id(&format!("{}:{:?}", auth.kind, auth.fields))[..8]
+    );
+    schemes.entry(name.clone()).or_insert_with(|| {
+        let kind = auth.kind.to_ascii_lowercase();
+        match kind.as_str() {
+            "basic" => json!({"type":"http", "scheme":"basic"}),
+            "bearer" => json!({"type":"http", "scheme":"bearer"}),
+            "apikey" | "api_key" => json!({
+                "type":"apiKey",
+                "name": auth.fields.get("key").cloned().unwrap_or_else(|| "X-API-Key".into()),
+                "in": auth.fields.get("in").cloned().unwrap_or_else(|| "header".into())
+            }),
+            "oauth2" | "oauth" => json!({
+                "type":"oauth2",
+                "flows": { oauth_flow_name(auth): oauth_flow(auth) }
+            }),
+            _ => json!({
+                "type":"http",
+                "scheme":format!("x-bridge-{}", slug(&auth.kind)),
+                "x-bridge-original-kind": auth.kind
+            }),
+        }
+    });
+    name
+}
+
+fn openapi_auth_is_native(auth: &Auth) -> bool {
+    matches!(
+        auth.kind.to_ascii_lowercase().as_str(),
+        "basic" | "bearer" | "apikey" | "api_key" | "oauth2" | "oauth"
+    )
+}
+
+fn oauth_flow_name(auth: &Auth) -> &'static str {
+    if auth.fields.contains_key("authUrl") && auth.fields.contains_key("accessTokenUrl") {
+        "authorizationCode"
+    } else if auth.fields.contains_key("accessTokenUrl") {
+        "clientCredentials"
+    } else if auth.fields.contains_key("authUrl") {
+        "implicit"
+    } else {
+        "password"
+    }
+}
+
+fn oauth_flow(auth: &Auth) -> Value {
+    let scopes = auth
+        .fields
+        .get("scope")
+        .or_else(|| auth.fields.get("scopes"))
+        .map(|value| {
+            value
+                .split_whitespace()
+                .map(|scope| (scope, "Imported scope"))
+                .collect::<BTreeMap<_, _>>()
+        })
+        .unwrap_or_default();
+    match oauth_flow_name(auth) {
+        "authorizationCode" => json!({
+            "authorizationUrl": auth.fields.get("authUrl").cloned().unwrap_or_default(),
+            "tokenUrl": auth.fields.get("accessTokenUrl").cloned().unwrap_or_default(),
+            "scopes": scopes
+        }),
+        "clientCredentials" => json!({
+            "tokenUrl": auth.fields.get("accessTokenUrl").cloned().unwrap_or_default(),
+            "scopes": scopes
+        }),
+        "implicit" => json!({
+            "authorizationUrl": auth.fields.get("authUrl").cloned().unwrap_or_default(),
+            "scopes": scopes
+        }),
+        _ => json!({
+            "tokenUrl": auth.fields.get("accessTokenUrl").cloned().unwrap_or_default(),
+            "scopes": scopes
+        }),
+    }
+}
+
+fn openapi_auth_detail(auth: &Auth) -> String {
+    match auth.kind.to_ascii_lowercase().as_str() {
+        "basic" => "OpenAPI HTTP Basic scheme and request-specific username/password extension were emitted.".into(),
+        "bearer" => "OpenAPI HTTP bearer scheme and request-specific token extension were emitted.".into(),
+        "apikey" | "api_key" => format!(
+            "OpenAPI apiKey scheme preserves '{}' in '{}'; the request-specific value is retained in x-bridge-auth-fields.",
+            auth.fields.get("key").map(String::as_str).unwrap_or("X-API-Key"),
+            auth.fields.get("in").map(String::as_str).unwrap_or("header")
+        ),
+        "oauth2" | "oauth" => "OpenAPI OAuth 2.0 flow metadata and the complete request-specific auth field inventory were emitted.".into(),
+        _ => "This auth kind is retained only in Bridge extensions and is listed as unsupported for native OpenAPI clients.".into(),
+    }
 }
 
 fn export_postman(collection: &Collection, output: &Path) -> Result<Vec<Finding>> {

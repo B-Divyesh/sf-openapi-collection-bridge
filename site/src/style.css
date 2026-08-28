@@ -115,6 +115,7 @@ footer { min-height: 180px; padding: 48px clamp(20px, 5vw, 72px); display: flex;
 footer p { margin: 0; }
 footer div { display: flex; gap: 24px; flex-wrap: wrap; }
 footer a { color: #9ceadd; }
+footer a { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 6px 0; }
 .legal-page { max-width: 820px; min-height: 70vh; margin: 0 auto; padding-top: 72px; }
 .legal-page h1 { font-size: clamp(40px, 6vw, 64px); }
 .legal-page h2 { margin-top: 48px; font-size: 28px; }

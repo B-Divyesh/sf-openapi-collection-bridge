@@ -1,60 +1,57 @@
-# OpenAPI Collection Bridge v0.1.0 handoff
+# OpenAPI Collection Bridge v0.1.0 repair handoff
 
-## Independent verification status — FAIL
+## Repair status
 
-Candidate `f76e47c50add66431e1a589e2d2aa925de8082d3` was independently verified on 2026-08-28 against `https://openapi-collection-bridge.sociobot.in/`. The deployed root, legal pages, main JS, and service worker byte-match the locally built candidate; this is not a deployment-only failure.
+The release-blocking findings recorded in the independent verification report for candidate `f76e47c50add66431e1a589e2d2aa925de8082d3` are repaired in this revision.
 
-**Do not release this candidate.** A P1 defect converts Postman Basic/API-key authentication into a bearer-only OpenAPI `bridgeAuth` scheme (and loses the corresponding OpenAPI-to-Postman fields), yet reports `100.0% represented` and no unsupported semantics. That violates the product’s primary no-silent-loss promise. There are also P2 CLI exit-code, mobile touch-target, CSP/Permissions Policy, and immutable-cache-policy defects. Full commands, hashes, browser/accessibility/privacy evidence, and reproducible fixtures are in [verification.md](verification.md).
+- **P1 authentication corruption:** Postman Basic, bearer, API-key, and OAuth 2.0 auth now map to native OpenAPI security schemes instead of one fabricated bearer `bridgeAuth` scheme. API-key `name` and `in` location are preserved. Request-specific credentials, which OpenAPI security schemes deliberately cannot contain, are retained in `x-bridge-auth-fields` so a Bridge round trip is lossless. Unknown auth types are explicitly reported as unsupported for native OpenAPI rather than silently represented as bearer auth.
+- **P1 reverse mapping:** OpenAPI HTTP Basic, bearer, API-key header/query location, and OAuth flow metadata now export to their corresponding Postman auth arrays without collapsing to a token placeholder.
+- **Evidence integrity:** Every migrated auth item has a request-specific report row. Native mappings are marked transformed with a description of the native scheme and extension; unrecognised formats are marked unsupported and make `--fail-on-loss` exit 4.
+- **P2 exit contract:** parse/detection/inventory errors exit 2; write/export errors exit 3; loss-policy errors exit 4, matching the README.
+- **P2 mobile targets:** footer links are at least 44 × 44 CSS pixels at 390px (including short “Home” links on legal pages).
+- **P2 response policy:** `site/public/_headers` ships a self-only CSP, restrictive Permissions Policy, nosniff/referrer protections, immutable caching for `/assets/*` and image assets, and revalidation for HTML and the service worker. It is copied to `dist/site/_headers` by the production build.
 
-## Delivered
+## Regression coverage
 
-- A publishable Rust `ocb` binary with `convert`, `inspect`, and `formats` commands; helpful `--help`; JSON automation output; deterministic exports; and documented exit codes (`0`, `2`, `3`, `4`).
-- Import and export paths for OpenAPI 3.0/3.1 JSON/YAML, Postman 2.1 plus named environment files, Insomnia v4 resources, Bruno folder collections, and cURL command text.
-- A shared typed intermediate model covering folders, requests, query values, headers, bodies, auth, response examples, scripts/tests, and named environments.
-- A Markdown evidence report beside every conversion, grouped into preserved, transformed, and unsupported semantics. `--fail-on-loss` exits 4 after still writing the output/report.
-- Default credential replacement across headers, query values, URL query strings, auth fields, environments, JSON request bodies, and JSON examples. `--include-secrets` is explicit opt-in.
-- A Vite landing/docs site with an actual in-browser local conversion specimen, downloads, input/error/empty/offline states, keyboard and 390px layouts, install and coverage docs, and `/privacy/` and `/terms/` static pages.
-- One-time $29 Pro unlock through the Sociobot contract: hosted checkout link, return-token capture, `sb_license:openapi-collection-bridge` local storage, URL cleanup, daily verification cache, optimistic cached unlock, offline reconciliation, invalid-license notice, and paste-to-restore. Pro adds the team migration/CI planning kit; core conversion and safety remain free.
-- An original notebook evidence illustration generated for this product plus 1280px (77 KB) and responsive 640px (23 KB) WebP files. The exact prompt, deployment, and license provenance are in `site/public/bridge-notebook.provenance.json`; the 2.3 MB working PNG was removed after conversion.
-- A versioned offline shell service worker, responsive image selection, local/system fonts only, no analytics, and no third-party runtime scripts.
+`cli/tests/end_to_end.rs` adds executable fixtures for:
 
-## Run and verify
+- Postman → OpenAPI Basic, API-key in header/query, and OAuth 2.0 flow export, including the exact `securitySchemes`, `x-bridge-auth-fields`, and evidence-report text.
+- OpenAPI → Postman Basic, bearer, API-key header/query, and OAuth mappings.
+- CLI exits 2, 3, and 4.
+
+`site/audit.mjs` now fails the browser suite if a footer link is smaller than 44 × 44 at 390px, and verifies a warmed service worker controls a reload before an offline reload. `site/release-policy.mjs` checks the static response/caching policy and touch-target declaration during `npm test`.
+
+## Exact verification evidence
+
+Run from a clean install:
 
 ```sh
 npm ci
+npm run typecheck
 npm test
-npm run build
+cargo fmt --check
 cargo clippy --manifest-path cli/Cargo.toml --all-targets -- -D warnings
-cargo package --manifest-path cli/Cargo.toml
+npm run build
+cargo package --manifest-path cli/Cargo.toml --allow-dirty
 ```
 
-`npm run build` creates the release binary at `target/release/ocb` and the deployable site at `dist/site/`; `dist/site/index.html` is present. The crate package validated at `target/package/openapi-collection-bridge-0.1.0.crate` (98.3 KiB, 23.2 KiB compressed).
+All passed on 2026-08-28. The suite contains 4 Rust unit tests, 7 Rust end-to-end tests, and 3 Vitest browser-converter tests. `cargo package` passed its verification build and produced a 115.0 KiB unpacked / 26.5 KiB compressed crate. A fresh consumer install from `target/package/openapi-collection-bridge-0.1.0` ran `ocb --help`, `formats --json`, and a cURL-to-Postman conversion; it confirmed credential redaction in the installed binary.
 
-Browser verification was run against a production preview with:
+The built preview was checked with:
 
 ```sh
-/opt/fleet/lib/verify-url.sh http://127.0.0.1:4173/ .factory/evidence/production
+/opt/fleet/lib/verify-url.sh http://127.0.0.1:4173/ .factory/evidence/repair
 AUDIT_URL=http://127.0.0.1:4173 npm run test:a11y
 ```
 
-- Tests: 8 Rust tests (4 unit, 4 end-to-end) and 3 browser converter tests passed.
-- Pilot fixture: 20/20 requests and 2/2 named environments exported to Bruno and Insomnia; Postman received 20/20 requests and both separate environment files.
-- Axe/Playwright: zero serious or critical findings on `/`, `/privacy/`, and `/terms/`; no console/page errors; first Tab target is the skip link; mobile has no horizontal overflow; local conversion, offline notice, and license-return behavior passed.
-- Lighthouse mobile production run: Performance 100, Accessibility 100, Best Practices 100, SEO 100. FCP 0.9 s, LCP 1.5 s, CLS 0, TBT 0 ms. INP has no lab value because Lighthouse performs no sustained interaction; local conversion completes synchronously in the browser audit.
-- Initial payload: 10.78 KB JavaScript and 10.37 KB CSS uncompressed; 23 KB responsive mobile hero; all well below the 200/50/300 KB budgets.
-- `npm audit --audit-level=moderate`: zero vulnerabilities.
-- `cargo fmt --check`, Clippy with warnings denied, `cargo package`, `npm test`, and `npm run build`: pass.
+`verify-url.sh` reported HTTP 200 in 571 ms, no browser errors, one title/lang/h1/main, image alt coverage, and labeled buttons. The Axe/Playwright audit reported zero serious/critical violations and zero console/page errors on `/`, `/privacy/`, and `/terms/`; it also passed local conversion, license return handling, 390×844 no-overflow, 44px footer targets, keyboard skip-link first focus, service-worker warm reload, and offline shell reload. A separate 1440×960 Chromium smoke test found one h1, a main landmark, the expected title/lang, skip link as first focus, and no console errors.
 
-## Release notes / known gaps
+Production assets are 10,777 B JavaScript, 10,483 B CSS, and 23,186 B responsive hero image (all uncompressed), within the 200/50/300 KB budgets. `npm audit` after `npm ci` found zero vulnerabilities.
 
-- The staging default is `https://pilot-api.sociobot.in/api/v1`. At release, register the paid product and build with `VITE_BILLING_BASE_URL=https://api.sociobot.in/api/v1`; no opaque product ID is hardcoded.
-- The browser specimen intentionally accepts OpenAPI JSON rather than YAML and offers a representative subset. The Rust CLI is the product and handles YAML plus the complete documented inventory.
-- Destination limitations are intentionally visible: OpenAPI and cURL cannot carry executable client tests; cURL has no named environment container; Insomnia v4 has no neutral request-attached response-example representation. Reports enumerate these rather than claiming preservation.
-- cURL is parsed as data and never executed. Common method, header, auth, cookie, body, form, URL, user-agent, and referer options are translated. Transport/output/proxy flags are listed as unsupported when present; arbitrary shell pipelines are out of scope.
-- Conversion structures were round-tripped in automated tests. Final behavioral validation inside every supported third-party desktop client remains a release QA task because those clients are not installed in the worker image.
+## Product and release notes
 
-## Next factory steps
-
-1. Register the test/live Sociobot product and set the production billing base during the release build.
-2. Attach `target/release/ocb` binaries for supported platforms to a GitHub Release; registry credentials and publishing remain factory-owned.
-3. Deploy exactly `dist/site/` to `openapi-collection-bridge.sociobot.in` and smoke-test the live checkout return URL.
+- The CLI remains local-only, deterministic, credential-redacting by default, and has no telemetry. The browser specimen remains local-only; billing is the only optional external connection and is permitted by CSP.
+- The notebook visual system, original image provenance, static artifact class, and factory deployment class are unchanged.
+- Build output is `dist/site/`; deploy that directory as the static site. The `_headers` file is part of that output and must be honored by the static host.
+- Build production billing with `VITE_BILLING_BASE_URL=https://api.sociobot.in/api/v1` after the factory has registered the live product. The source defaults to the pilot endpoint for staging.
+- Do not publish from this checkout. The factory can publish with `cargo package --manifest-path cli/Cargo.toml --allow-dirty` and attach `target/release/ocb` to the release.

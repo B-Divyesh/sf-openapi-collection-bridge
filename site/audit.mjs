@@ -16,6 +16,10 @@ for (const path of ['/', '/privacy/', '/terms/']) {
   results[path] = audit.violations.filter(item => ['serious', 'critical'].includes(item.impact ?? '')).map(item => ({ id: item.id, impact: item.impact, nodes: item.nodes.map(node => node.target) }));
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   if (overflow) consoleErrors.push(`${path}: horizontal overflow at 390px`);
+  const undersizedFooterLinks = await page.locator('footer a').evaluateAll(links => links
+    .filter(link => link.getBoundingClientRect().height < 44 || link.getBoundingClientRect().width < 44)
+    .map(link => `${link.textContent?.trim()} (${link.getBoundingClientRect().width.toFixed(1)}×${link.getBoundingClientRect().height.toFixed(1)})`));
+  if (undersizedFooterLinks.length) consoleErrors.push(`${path}: footer links below 44px target: ${undersizedFooterLinks.join(', ')}`);
   if (path === '/') {
     await page.keyboard.press('Tab');
     const firstFocus = await page.evaluate(() => document.activeElement?.textContent?.trim());
@@ -24,8 +28,11 @@ for (const path of ['/', '/privacy/', '/terms/']) {
     if (!await page.locator('#conversion-result').isVisible()) consoleErrors.push('/: local conversion result did not appear');
     const resultAudit = await new AxeBuilder({ page }).include('#conversion-result').analyze();
     for (const item of resultAudit.violations.filter(item => ['serious', 'critical'].includes(item.impact ?? ''))) results[path].push({ id: item.id, impact: item.impact, nodes: item.nodes.map(node => node.target) });
+    await page.waitForFunction(() => navigator.serviceWorker?.ready.then(() => true), undefined, { timeout: 5000 });
+    await page.reload({ waitUntil: 'networkidle' });
+    if (!await page.evaluate(() => Boolean(navigator.serviceWorker?.controller))) consoleErrors.push('/: service worker did not control the warmed reload');
     await context.setOffline(true);
-    await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+    await page.reload({ waitUntil: 'domcontentloaded' });
     if (!await page.locator('#offline-note').isVisible()) consoleErrors.push('/: offline guidance did not appear');
     await context.setOffline(false);
   }

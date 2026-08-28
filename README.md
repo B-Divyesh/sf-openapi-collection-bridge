@@ -43,7 +43,7 @@ The public contract starts at `0.1.0`. Output is deterministic for identical inp
 
 ## Format coverage
 
-- OpenAPI 3.0/3.1 JSON or YAML: paths, operations, parameters, request/response examples, servers, security schemes, and server variables.
+- OpenAPI 3.0/3.1 JSON or YAML: paths, operations, parameters, request/response examples, servers, security schemes, and server variables. HTTP Basic, bearer, API-key name/location, and OAuth 2.0 flow metadata map to native OpenAPI security schemes; request-specific credential fields are retained in a documented `x-bridge-auth-fields` extension because OpenAPI schemes intentionally do not contain credentials.
 - Postman Collection 2.1 plus environment JSON: nested requests, headers, query/body data, collection/request auth, examples, variables, pre-request scripts, and tests.
 - Insomnia v4 exports: workspaces, request groups, requests, environments, bodies, auth, parameters, and scripts where represented.
 - Bruno folders: `bruno.json`, `.bru` requests, folder ordering, environments, auth, bodies, vars, and script/test blocks.
@@ -66,7 +66,7 @@ No conversion input leaves the browser or CLI. There is no telemetry. The option
 
 ## Deployment and publishing
 
-Deploy `dist/site/` as a static site. The factory owns registry and release credentials; workers must not publish. Validate the Rust package with:
+Deploy `dist/site/` as a static site. The included `_headers` file supplies the restrictive CSP/Permissions Policy, revalidation for HTML/service worker, and immutable caching for hashed assets on compatible static hosts. The factory owns registry and release credentials; workers must not publish. Validate the Rust package with:
 
 ```sh
 cargo package --manifest-path cli/Cargo.toml --allow-dirty

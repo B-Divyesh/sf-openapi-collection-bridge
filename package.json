@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config site/vite.config.ts",
-    "test": "cargo test --manifest-path cli/Cargo.toml && vitest run --config site/vite.config.ts",
+    "test": "cargo test --manifest-path cli/Cargo.toml && vitest run --config site/vite.config.ts && node site/release-policy.mjs",
+    "typecheck": "tsc --noEmit --project site/tsconfig.json",
     "build:cli": "cargo build --release --manifest-path cli/Cargo.toml",
     "build:site": "vite build --config site/vite.config.ts",
     "build": "npm run build:cli && npm run build:site",

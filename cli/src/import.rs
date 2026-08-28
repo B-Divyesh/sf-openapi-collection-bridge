@@ -187,20 +187,9 @@ fn import_openapi(text: &str) -> Result<(Collection, Vec<Finding>)> {
                     .and_then(|o| o.keys().next())
                 {
                     if let Some(schema) = schemes.and_then(|s| s.get(name)) {
-                        let kind = schema
-                            .get("scheme")
-                            .and_then(Value::as_str)
-                            .or_else(|| schema.get("type").and_then(Value::as_str))
-                            .unwrap_or("apiKey");
-                        let mut fields = BTreeMap::new();
-                        fields.insert(
-                            "token".into(),
-                            format!("{{{{bridge_secret_{}}}}}", crate::slug(name)),
-                        );
-                        req.auth = Some(Auth {
-                            kind: kind.into(),
-                            fields,
-                        });
+                        if let Some(auth) = openapi_auth(schema, operation, name) {
+                            req.auth = Some(auth);
+                        }
                     }
                 }
                 requests.push(req);
@@ -256,6 +245,91 @@ fn import_openapi(text: &str) -> Result<(Collection, Vec<Finding>)> {
         },
         findings,
     ))
+}
+
+fn openapi_auth(schema: &Value, operation: &Value, scheme_name: &str) -> Option<Auth> {
+    let mut fields: BTreeMap<String, String> = operation
+        .get("x-bridge-auth-fields")
+        .and_then(Value::as_object)
+        .map(|values| {
+            values
+                .iter()
+                .map(|(key, value)| (key.clone(), value_text(value)))
+                .collect()
+        })
+        .unwrap_or_default();
+    let kind = match schema.get("type").and_then(Value::as_str)? {
+        "http" => schema
+            .get("scheme")
+            .and_then(Value::as_str)
+            .unwrap_or("bearer")
+            .to_ascii_lowercase(),
+        "apiKey" => {
+            fields.entry("key".into()).or_insert_with(|| {
+                schema
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or("X-API-Key")
+                    .into()
+            });
+            fields.entry("in".into()).or_insert_with(|| {
+                schema
+                    .get("in")
+                    .and_then(Value::as_str)
+                    .unwrap_or("header")
+                    .into()
+            });
+            "apikey".into()
+        }
+        "oauth2" => {
+            if let Some((flow_name, flow)) = schema
+                .get("flows")
+                .and_then(Value::as_object)
+                .and_then(|flows| flows.iter().next())
+            {
+                fields
+                    .entry("grant_type".into())
+                    .or_insert_with(|| flow_name.clone());
+                if let Some(url) = flow.get("authorizationUrl").and_then(Value::as_str) {
+                    fields.entry("authUrl".into()).or_insert_with(|| url.into());
+                }
+                if let Some(url) = flow.get("tokenUrl").and_then(Value::as_str) {
+                    fields
+                        .entry("accessTokenUrl".into())
+                        .or_insert_with(|| url.into());
+                }
+                if let Some(scopes) = flow.get("scopes").and_then(Value::as_object) {
+                    fields
+                        .entry("scope".into())
+                        .or_insert_with(|| scopes.keys().cloned().collect::<Vec<_>>().join(" "));
+                }
+            }
+            "oauth2".into()
+        }
+        _ => return None,
+    };
+    if fields.is_empty() {
+        match kind.as_str() {
+            "basic" => {
+                fields.insert(
+                    "username".into(),
+                    format!("{{{{bridge_secret_{scheme_name}_username}}}}"),
+                );
+                fields.insert(
+                    "password".into(),
+                    format!("{{{{bridge_secret_{scheme_name}_password}}}}"),
+                );
+            }
+            "bearer" => {
+                fields.insert(
+                    "token".into(),
+                    format!("{{{{bridge_secret_{scheme_name}}}}}"),
+                );
+            }
+            _ => {}
+        }
+    }
+    Some(Auth { kind, fields })
 }
 
 fn import_postman(text: &str) -> Result<(Collection, Vec<Finding>)> {

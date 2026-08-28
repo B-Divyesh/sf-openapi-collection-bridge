@@ -63,7 +63,11 @@ fn main() {
         Ok(code) => code,
         Err(error) => {
             eprintln!("error: {error:#}");
-            3
+            if openapi_collection_bridge::is_invalid_input(&error) {
+                2
+            } else {
+                3
+            }
         }
     };
     std::process::exit(exit);
