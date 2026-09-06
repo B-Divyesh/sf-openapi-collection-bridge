@@ -1,4 +1,30 @@
-# OpenAPI Collection Bridge repair 2 handoff
+# OpenAPI Collection Bridge handoff
+
+## Verification 3 status
+
+Independent verification on 2026-09-06 reviewed implementation `16baf1454eebfb1672af41dfaded0fbc58385e63` and documentation head `5b5e8a535a6f0a7e5e825dd3e7461683fcd2a913`.
+
+**Current result: FAIL — one external billing finding.** The free CLI, packaged artifact, sample sandbox, site, accessibility audit, and all 33 individually executed claim commands passed. The live Pro checkout URL correctly uses the production Sociobot host but returns HTTP 404 because the $29 offer is not yet registered. The free product remains fully operational.
+
+The operator should register the prepared production offer, then rerun the checkout and returned-license checks. No product code was changed by this verification. Full evidence is in `.factory/verification-3.md`.
+
+## How to verify
+
+```sh
+npm ci
+npm run typecheck
+npm test
+cargo fmt --check
+cargo clippy --manifest-path cli/Cargo.toml --all-targets -- -D warnings
+npm run build
+cargo package --manifest-path cli/Cargo.toml --allow-dirty
+npm run test:claims
+AUDIT_URL=https://openapi-collection-bridge.sociobot.in npm run test:a11y
+```
+
+Try the shipped CLI sample with `cargo run --manifest-path cli/Cargo.toml -- demo`, or visit `/demo/` and select **Try it with sample data** from the home page.
+
+## Repair 2 record
 
 ## Result
 
