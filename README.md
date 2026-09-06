@@ -1,31 +1,42 @@
 # OpenAPI Collection Bridge
 
-Move API work between OpenAPI, Postman, Insomnia, Bruno, and cURL without guessing what survived. `ocb` converts locally, strips credentials by default, produces stable source-control-friendly files, and writes a semantic loss report beside every export.
+OpenAPI Collection Bridge is for API teams moving work between local clients. The `ocb` CLI converts OpenAPI, Postman, Insomnia, Bruno, and cURL while reporting preserved, transformed, and unsupported semantics.
+
+Conversion runs locally. Credential values are replaced by named placeholders unless `--include-secrets` is set. Identical input and CLI versions produce deterministic, source-control-friendly output.
+
+## Try the bundled sample
+
+The sample contains three parcel requests, one environment, API-key authentication, a response example, and a test script.
+
+```sh
+cargo run --manifest-path cli/Cargo.toml -- demo
+```
+
+`ocb demo` copies the bundled files into a new temporary directory. It runs the real converter and prints the OpenAPI and Markdown report paths.
+
+The browser demo is at <https://openapi-collection-bridge.sociobot.in/demo/>. It loads populated output in one click from the home page. Its input stays in memory, resets to the sample, and clears on reload.
 
 ## Install
 
-Prebuilt single binaries are intended for GitHub Releases. From a source checkout:
+Build the single `ocb` binary from a source checkout with Rust 1.82 or newer:
 
 ```sh
 cargo install --path cli
 ```
 
-Rust 1.82 or newer is required to build. The resulting command is `ocb`.
-
-## Usage
-
-Convert one OpenAPI, Postman, Insomnia, Bruno, or cURL source. The destination format can also be any of those five formats.
+## Convert a collection
 
 ```sh
 ocb convert ./petstore.yaml --from openapi --to bruno --output ./petstore-bruno
 ocb convert ./team.postman_collection.json --to insomnia --output ./team-insomnia.json
 ocb convert ./billing-bruno --from bruno --to postman --output ./billing.json
-ocb convert 'curl -H "Authorization: Bearer secret" https://api.example.test/me' --from curl --to openapi --output ./openapi.json
+ocb convert 'curl -H "Authorization: Bearer secret" https://api.example.test/me' \
+  --from curl --to openapi --output ./openapi.json
 ```
 
-`--from` is optional for files and directories. Every successful conversion writes a Markdown evidence report to `<output>.bridge-report.md` (or inside a directory export). Credentials are replaced by `{{bridge_secret_*}}` variables by default. Use `--include-secrets` only when the destination is appropriately protected.
+`--from` is optional for known files and Bruno directories. Each successful export writes a Markdown report beside the output. Bruno exports place the report inside their output directory.
 
-For scripts and CI, `--json` prints a machine-readable result to stdout while diagnostics stay on stderr:
+Use `--json` for automation. Results go to stdout and diagnostics go to stderr.
 
 ```sh
 ocb convert collection.json --to bruno --output ./out --json
@@ -33,40 +44,63 @@ ocb inspect ./out --from bruno --json
 ocb formats --json
 ```
 
-Exit codes are `0` for success, `2` for invalid usage/input, `3` when conversion failed, and `4` when `--fail-on-loss` detects unsupported semantics. `--fail-on-loss` is useful in migration checks:
+Exit codes are `0` for success, `2` for invalid input, `3` for conversion or write failure, and `4` for unsupported semantics with `--fail-on-loss`.
 
 ```sh
 ocb convert collection.json --to openapi --output openapi.json --fail-on-loss
 ```
 
-The public contract starts at `0.1.0`. Output is deterministic for identical input and CLI version: map keys are ordered, request order follows source order, generated IDs are content-derived, and reports contain no timestamps or machine paths.
-
 ## Format coverage
 
-- OpenAPI 3.0/3.1 JSON or YAML: paths, operations, parameters, request/response examples, servers, security schemes, and server variables. HTTP Basic, bearer, API-key name/location, and OAuth 2.0 flow metadata map to native OpenAPI security schemes; request-specific credential fields are retained in a documented `x-bridge-auth-fields` extension because OpenAPI schemes intentionally do not contain credentials.
-- Postman Collection 2.1 plus environment JSON: nested requests, headers, query/body data, collection/request auth, examples, variables, pre-request scripts, and tests.
-- Insomnia v4 exports: workspaces, request groups, requests, environments, bodies, auth, parameters, and scripts where represented.
-- Bruno folders: `bruno.json`, `.bru` requests, folder ordering, environments, auth, bodies, vars, and script/test blocks.
-- cURL command text: method, URL, headers, user/bearer auth, form and request bodies. Shell expansion and commands are never executed.
+- OpenAPI 3.0 and 3.1 JSON or YAML: operations, parameters, examples, servers, HTTP Basic, bearer, API keys, OAuth 2.0 metadata, and server variables.
+- Postman Collection 2.1: nested requests, headers, query and body data, authentication, examples, variables, pre-request scripts, and tests.
+- Insomnia v4: workspaces, request groups, requests, environments, bodies, authentication, and parameters.
+- Bruno: folder layout, order, environments, authentication, bodies, variables, and script or test blocks.
+- cURL text: methods, URLs, headers, Basic or bearer authentication, forms, and bodies. Shell commands are never executed.
 
-The report distinguishes exact preservation, an explicit transformation, and unsupported semantics. It does not claim destination clients can represent features they cannot.
+Postman base URL variables become OpenAPI servers instead of duplicated path segments. An OpenAPI round trip restores a usable full request URL.
 
-## Development
+## Privacy and paid tools
+
+The CLI has no telemetry and makes no conversion network requests. The site has no advertising, analytics, fingerprinting, third-party fonts, or tracking scripts.
+
+Core conversion, reports, credential removal, and exports remain free. Pro costs $29 once, with no subscription. It adds a team migration planner and a downloadable GitHub Actions policy file. License checks use only the production Sociobot billing API and are cached for one day.
+
+See the [privacy policy](https://openapi-collection-bridge.sociobot.in/privacy/) and [terms](https://openapi-collection-bridge.sociobot.in/terms/).
+
+## Clean setup and verification
 
 ```sh
-cargo test --manifest-path cli/Cargo.toml
-npm install
+npm ci
+npm run typecheck
 npm test
+cargo fmt --check
+cargo clippy --manifest-path cli/Cargo.toml --all-targets -- -D warnings
 npm run build
+cargo package --manifest-path cli/Cargo.toml --allow-dirty
 ```
 
-`npm test` runs the CLI tests and site tests. `npm run build` builds the release CLI and writes the static site to `dist/site/` with `index.html` at that root. `npm run build:site` builds only the Vite site.
+`npm test` runs Rust unit and integration tests, browser specimen tests, every claim test, and release-policy checks. `npm run build` writes the site to `dist/site/` and the binary to `target/release/ocb`.
 
-No conversion input leaves the browser or CLI. There is no telemetry. The optional one-time Pro license supports development and unlocks batch migration workflow guidance; core conversion, reports, credential stripping, accessibility, and export remain free.
+Each public outcome is registered in `.factory/claims.json`. Run all claim sandboxes with:
 
-## Deployment and publishing
+```sh
+npm run test:claims
+```
 
-Deploy `dist/site/` as a static site. The included `staticwebapp.config.json` (Azure Static Web Apps) and `_headers` (compatible static hosts) supply the restrictive CSP/Permissions Policy, revalidation for HTML/service worker, and immutable caching for hashed assets. The factory owns registry and release credentials; workers must not publish. Validate the Rust package with:
+Run the accessibility and browser audit while a built site is available:
+
+```sh
+npm run build:site
+npm run dev -- --host 127.0.0.1
+AUDIT_URL=http://127.0.0.1:5173 npm run test:a11y
+```
+
+## Deploy and publish
+
+Deploy `dist/site/` as a static site. The included host configuration defines the CSP, cache policy, and designed 404 response.
+
+The factory owns release credentials. Do not publish from a worker. Validate the Rust package with:
 
 ```sh
 cargo package --manifest-path cli/Cargo.toml --allow-dirty

@@ -22,7 +22,7 @@ export async function restoreLicense(token: string, onState: (state: LicenseStat
 }
 
 async function verifyLicense(token: string, onState: (state: LicenseState) => void): Promise<void> {
-  const base = (import.meta.env.VITE_BILLING_BASE_URL as string | undefined) ?? 'https://pilot-api.sociobot.in/api/v1';
+  const base = (import.meta.env.VITE_BILLING_BASE_URL as string | undefined) ?? 'https://api.sociobot.in/api/v1';
   try {
     const response = await fetch(`${base}/products/openapi-collection-bridge/verify?license=${encodeURIComponent(token)}`);
     if (!response.ok) throw new Error(`verification returned ${response.status}`);

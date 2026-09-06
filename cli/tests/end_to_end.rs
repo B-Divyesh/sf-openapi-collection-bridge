@@ -319,3 +319,147 @@ fn documented_cli_exit_codes_distinguish_input_conversion_and_loss() {
         Some(4)
     );
 }
+
+#[test]
+fn postman_base_url_variable_round_trips_to_a_usable_request_url() {
+    let temp = tempfile::tempdir().unwrap();
+    let collection = temp.path().join("pilot.postman_collection.json");
+    let environment = temp.path().join("development.postman_environment.json");
+    std::fs::write(
+        &collection,
+        r#"{"info":{"name":"Pilot","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},"variable":[{"key":"base_url","value":"https://api.example.test"}],"item":[{"name":"Account","request":{"method":"GET","url":{"raw":"{{base_url}}/account"}}}]}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        &environment,
+        r#"{"name":"Development","values":[{"key":"base_url","value":"https://api.example.test","enabled":true}]}"#,
+    )
+    .unwrap();
+    let openapi = temp.path().join("pilot.openapi.json");
+    let (result, findings) = openapi_collection_bridge::convert(
+        collection.to_str().unwrap(),
+        None,
+        Format::Openapi,
+        &openapi,
+        std::slice::from_ref(&environment),
+        true,
+    )
+    .unwrap();
+    let doc: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&openapi).unwrap()).unwrap();
+    assert!(doc["paths"]["/account"]["get"].is_object());
+    assert!(doc["paths"]["/{{base_url}}/account"].is_null());
+    assert!(doc["servers"].as_array().unwrap().iter().any(|server| {
+        server["url"] == "https://api.example.test" && server["description"] == "Development"
+    }));
+    assert!(findings.iter().any(|finding| {
+        finding.feature == "request 'Account' URL variable"
+            && finding.detail.contains("removed from the operation path")
+    }));
+    assert!(std::fs::read_to_string(result.report)
+        .unwrap()
+        .contains("Leading Postman variable '{{base_url}}'"));
+
+    let round_trip = temp.path().join("roundtrip.postman.json");
+    openapi_collection_bridge::convert(
+        openapi.to_str().unwrap(),
+        None,
+        Format::Postman,
+        &round_trip,
+        &[],
+        true,
+    )
+    .unwrap();
+    let round_trip_doc: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(round_trip).unwrap()).unwrap();
+    assert_eq!(
+        round_trip_doc["item"][0]["request"]["url"]["raw"],
+        "https://api.example.test/account"
+    );
+}
+
+#[test]
+fn bundled_demo_runs_the_real_converter_in_a_temporary_directory() {
+    let output = Command::new(env!("CARGO_BIN_EXE_ocb"))
+        .args(["demo", "--json"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["counts"]["requests"], 3);
+    let converted = std::path::Path::new(result["output"].as_str().unwrap());
+    let report = std::path::Path::new(result["report"].as_str().unwrap());
+    assert!(converted.is_file());
+    assert!(report.is_file());
+    let document: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(converted).unwrap()).unwrap();
+    assert!(document["paths"]["/parcels"]["get"].is_object());
+    assert!(!document.to_string().contains("demo-api-secret"));
+}
+
+#[test]
+fn unresolved_leading_url_variable_is_reported_as_unsupported() {
+    let temp = tempfile::tempdir().unwrap();
+    let source = temp.path().join("source.postman_collection.json");
+    std::fs::write(&source, r#"{"info":{"name":"No environment","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},"item":[{"name":"Account","request":{"method":"GET","url":{"raw":"{{host}}/account"}}}]}"#).unwrap();
+    let output = temp.path().join("output.json");
+    let (_, findings) = openapi_collection_bridge::convert(
+        source.to_str().unwrap(),
+        None,
+        Format::Openapi,
+        &output,
+        &[],
+        true,
+    )
+    .unwrap();
+    assert!(findings.iter().any(|finding| {
+        finding.status == openapi_collection_bridge::model::FindingStatus::Unsupported
+            && finding.feature == "request 'Account' URL variable"
+            && finding.detail.contains("no supplied value")
+    }));
+}
+
+#[test]
+fn postman_collection_auth_and_structured_urls_are_inventoried() {
+    let temp = tempfile::tempdir().unwrap();
+    let source = temp.path().join("structured.postman_collection.json");
+    std::fs::write(&source, r#"{"info":{"name":"Structured","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},"auth":{"type":"bearer","bearer":[{"key":"token","value":"shared-token"}]},"item":[{"name":"Account","request":{"method":"GET","url":{"protocol":"https","host":["api","example","test"],"path":["v1","account"]}}}]}"#).unwrap();
+    let (collection, _) =
+        openapi_collection_bridge::inspect(source.to_str().unwrap(), None).unwrap();
+    assert_eq!(
+        collection.requests[0].url,
+        "https://api.example.test/v1/account"
+    );
+    assert_eq!(collection.requests[0].auth.as_ref().unwrap().kind, "bearer");
+    assert_eq!(
+        collection.requests[0]
+            .auth
+            .as_ref()
+            .unwrap()
+            .fields
+            .get("token")
+            .unwrap(),
+        "shared-token"
+    );
+}
+
+#[test]
+fn bruno_sequence_controls_request_order() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::write(temp.path().join("bruno.json"), r#"{"name":"Ordered"}"#).unwrap();
+    std::fs::write(
+        temp.path().join("a-second.bru"),
+        "meta {\n name: Second\n seq: 2\n}\nget {\n url: https://api.test/second\n}",
+    )
+    .unwrap();
+    std::fs::write(
+        temp.path().join("z-first.bru"),
+        "meta {\n name: First\n seq: 1\n}\nget {\n url: https://api.test/first\n}",
+    )
+    .unwrap();
+    let (collection, _) =
+        openapi_collection_bridge::inspect(temp.path().to_str().unwrap(), Some(Format::Bruno))
+            .unwrap();
+    assert_eq!(collection.requests[0].name, "First");
+    assert_eq!(collection.requests[1].name, "Second");
+}

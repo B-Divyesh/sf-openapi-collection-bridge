@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Convert a three-request API sample locally and inspect its semantic loss report." />
+    <meta name="theme-color" content="#f3eedf" />
+    <meta property="og:type" content="website" /><meta property="og:title" content="Demo — OpenAPI Collection Bridge" /><meta property="og:description" content="Convert a three-request sample and inspect every semantic result." /><meta property="og:url" content="https://openapi-collection-bridge.sociobot.in/demo/" /><meta property="og:image" content="https://openapi-collection-bridge.sociobot.in/bridge-social.jpg" />
+    <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content="Demo — OpenAPI Collection Bridge" /><meta name="twitter:description" content="Convert a three-request sample and inspect every semantic result." /><meta name="twitter:image" content="https://openapi-collection-bridge.sociobot.in/bridge-social.jpg" />
+    <title>Demo — OpenAPI Collection Bridge</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" /><link rel="apple-touch-icon" href="/apple-touch-icon.png" /><link rel="canonical" href="https://openapi-collection-bridge.sociobot.in/demo/" />
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <aside class="demo-banner" aria-label="Demo status"><strong>Demo — sample data, nothing is saved</strong><div><button id="reset-demo" type="button">Reset demo</button><a href="/#install">Start for real</a></div></aside>
+    <header class="site-header"><a class="brand" href="/" aria-label="OpenAPI Collection Bridge home"><span aria-hidden="true">⇄</span> OCB</a><nav aria-label="Primary navigation"><a aria-current="page" href="/demo/">Demo</a><a href="/#install">Install</a><a href="/privacy/">Privacy</a><a href="https://github.com/B-Divyesh/sf-openapi-collection-bridge" aria-label="Source repository (external)">Source ↗</a></nav></header>
+    <main id="main" tabindex="-1" class="demo-page">
+      <section class="demo-section" aria-labelledby="demo-title">
+        <div class="section-heading"><p class="section-no">Sample conversion</p><h1 id="demo-title" tabindex="-1">Convert a sample API collection</h1><p>Three parcel requests are already converted to Bruno. Review the output and every semantic result below.</p></div>
+        <noscript><p class="notice error">JavaScript is required for this browser demo. The CLI works without a browser.</p></noscript>
+        <div id="offline-note" class="notice" hidden role="status">You are offline. Local conversion still works.</div>
+        <div class="workbench">
+          <div class="source-pane">
+            <div class="field-row"><label for="source-format">Source format</label><select id="source-format"><option value="openapi">OpenAPI JSON</option><option value="postman">Postman</option><option value="insomnia">Insomnia</option><option value="curl">cURL</option></select></div>
+            <label for="source-input">Source content</label><textarea id="source-input" rows="18" spellcheck="false" aria-describedby="source-help source-error"></textarea>
+            <div class="input-tools"><label class="file-button" for="source-file">Load a file</label><input id="source-file" type="file" accept=".json,.yaml,.yml,.txt,.curl" /><span id="source-help">The file stays in this browser tab.</span></div><p id="source-error" class="field-error" role="alert"></p>
+          </div>
+          <div class="bridge-controls" aria-label="Conversion direction"><span aria-hidden="true">→</span><label for="target-format">Destination</label><select id="target-format"><option value="bruno">Bruno</option><option value="postman">Postman</option><option value="insomnia">Insomnia</option><option value="openapi">OpenAPI</option><option value="curl">cURL</option></select><button id="convert-button" class="stamp-button" type="button">Convert locally</button></div>
+          <div class="result-pane" aria-live="polite" aria-atomic="false"><div id="empty-result" class="empty-state"><span aria-hidden="true">↳</span><h2>Converted output appears here</h2><p>Choose a destination, then convert the sample.</p></div><div id="conversion-result" hidden tabindex="-1"><div class="result-heading"><h2>Migration evidence</h2><button id="download-output" class="copy-button" type="button">Download output</button></div><div id="evidence-summary" class="evidence-summary"></div><ul id="finding-list" class="finding-list"></ul><details><summary>Preview converted output</summary><pre tabindex="0"><code id="output-preview"></code></pre></details></div></div>
+        </div>
+      </section>
+    </main>
+    <footer><p><strong>OpenAPI Collection Bridge</strong><br />Convert API collections and review semantic changes.</p><div><a href="/demo/">Demo</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><span>Built by Param Factory</span><span>v0.1.1</span></div></footer>
+  </body>
+</html>

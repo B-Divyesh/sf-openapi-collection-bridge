@@ -1,0 +1,35 @@
+{
+  "info": {
+    "name": "Parcel operations",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://api.example.test" }
+  ],
+  "item": [
+    {
+      "name": "List parcels",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-API-Key", "value": "demo-api-secret" }],
+        "url": { "raw": "{{base_url}}/parcels?status=in_transit", "query": [{ "key": "status", "value": "in_transit" }] },
+        "auth": { "type": "apikey", "apikey": [{ "key": "key", "value": "X-API-Key" }, { "key": "value", "value": "demo-api-secret" }, { "key": "in", "value": "header" }] }
+      },
+      "response": [{ "name": "Two parcels", "code": 200, "body": "{\"items\":[{\"id\":\"par_104\",\"status\":\"in_transit\"},{\"id\":\"par_105\",\"status\":\"in_transit\"}]}" }]
+    },
+    {
+      "name": "Create parcel",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"recipient\":\"Mira Chen\",\"postal_code\":\"94107\"}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{base_url}}/parcels" }
+      }
+    },
+    {
+      "name": "Track parcel",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('returns tracking events', () => pm.response.to.have.status(200));"] } }],
+      "request": { "method": "GET", "url": { "raw": "{{base_url}}/parcels/par_104/events" } }
+    }
+  ]
+}

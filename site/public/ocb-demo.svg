@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" width="960" height="520" role="img" aria-labelledby="title desc">
+  <title id="title">OpenAPI Collection Bridge demo terminal</title>
+  <desc id="desc">The ocb demo command converts three sample requests, replaces credentials, and prints output and evidence file paths.</desc>
+  <rect width="960" height="520" rx="12" fill="#121c1a"/>
+  <rect x="0" y="0" width="960" height="48" rx="12" fill="#1d2926"/>
+  <rect x="0" y="36" width="960" height="12" fill="#1d2926"/>
+  <circle cx="28" cy="24" r="7" fill="#a63d2f"/><circle cx="52" cy="24" r="7" fill="#b17613"/><circle cx="76" cy="24" r="7" fill="#55a279"/>
+  <text x="480" y="30" text-anchor="middle" fill="#d9ddd5" font-family="ui-monospace,monospace" font-size="14">ocb — local sample conversion</text>
+  <g font-family="ui-monospace,monospace" font-size="18">
+    <text x="34" y="94" fill="#82d9cb">$ <tspan fill="#fffaf0">ocb demo</tspan></text>
+    <text x="34" y="144" fill="#fffaf0">Demo converted <tspan fill="#82d9cb">3 sample requests</tspan> to OpenAPI.</text>
+    <text x="34" y="184" fill="#fffaf0">Credentials were replaced with named placeholders.</text>
+    <text x="34" y="238" fill="#d9ddd5">Output:</text>
+    <text x="34" y="272" fill="#82d9cb">/tmp/openapi-collection-bridge-demo-3147-1788654726952/</text>
+    <text x="34" y="306" fill="#82d9cb">parcel-api.openapi.json</text>
+    <text x="34" y="360" fill="#d9ddd5">Evidence:</text>
+    <text x="34" y="394" fill="#82d9cb">/tmp/openapi-collection-bridge-demo-3147-1788654726952/</text>
+    <text x="34" y="428" fill="#82d9cb">parcel-api.openapi.json.bridge-report.md</text>
+    <text x="34" y="482" fill="#fffaf0">$ <tspan fill="#82d9cb">▮</tspan></text>
+  </g>
+</svg>

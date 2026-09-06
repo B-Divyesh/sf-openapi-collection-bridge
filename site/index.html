@@ -3,10 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Convert OpenAPI, Postman, Insomnia, Bruno, and cURL locally—with a semantic loss report." />
+    <meta name="description" content="Convert OpenAPI, Postman, Insomnia, Bruno, and cURL locally, with a report of changed and unsupported features." />
     <meta name="theme-color" content="#f3eedf" />
-    <title>OpenAPI Collection Bridge — migrate with evidence</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="OpenAPI Collection Bridge — convert API collections" />
+    <meta property="og:description" content="Move API collections between five formats and review every conversion change." />
+    <meta property="og:url" content="https://openapi-collection-bridge.sociobot.in/" />
+    <meta property="og:image" content="https://openapi-collection-bridge.sociobot.in/bridge-social.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="OpenAPI Collection Bridge — convert API collections" />
+    <meta name="twitter:description" content="Move API collections between five formats and review every conversion change." />
+    <meta name="twitter:image" content="https://openapi-collection-bridge.sociobot.in/bridge-social.jpg" />
+    <title>OpenAPI Collection Bridge — convert API collections</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="canonical" href="https://openapi-collection-bridge.sociobot.in/" />
     <link rel="preload" as="image" href="/bridge-notebook-640.webp" imagesrcset="/bridge-notebook-640.webp 640w, /bridge-notebook.webp 1280w" imagesizes="(max-width: 920px) calc(100vw - 40px), 50vw" type="image/webp" fetchpriority="high" />
     <script type="module" src="/src/main.ts"></script>
@@ -14,85 +26,85 @@
   <body>
     <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site-header">
-      <a class="brand" href="/" aria-label="OCB — OpenAPI Collection Bridge home"><span aria-hidden="true">⇄</span> OCB</a>
+      <a class="brand" href="/" aria-label="OpenAPI Collection Bridge home"><span aria-hidden="true">⇄</span> OCB</a>
       <nav aria-label="Primary navigation">
-        <a href="#demo">Try it</a><a href="#coverage">Coverage</a><a href="#pricing">Pricing</a><a href="https://github.com/B-Divyesh/sf-openapi-collection-bridge">Source</a>
+        <a href="/demo/">Demo</a><a href="#install">Install</a><a href="/privacy/">Privacy</a><a href="https://github.com/B-Divyesh/sf-openapi-collection-bridge" aria-label="Source repository (external)">Source ↗</a>
       </nav>
     </header>
 
-    <main id="main">
+    <main id="main" tabindex="-1">
       <section class="hero ruled-section" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow">Field note 01 · local interoperability</p>
-          <h1 id="hero-title">Move the requests.<br /><em>Keep the evidence.</em></h1>
-          <p class="lede">A local CLI that converts OpenAPI, Postman, Insomnia, Bruno, and cURL—and writes down exactly what survived, changed, or could not cross.</p>
-          <div class="hero-actions"><a class="stamp-button" href="#install">Install the CLI</a><a class="text-link" href="#demo">Try a file locally ↓</a></div>
-          <ul class="trust-list" aria-label="Product guarantees"><li>✓ secrets stripped by default</li><li>✓ deterministic output</li><li>✓ zero telemetry</li></ul>
+          <p class="eyebrow">OpenAPI Collection Bridge</p>
+          <h1 id="hero-title">Convert API collections without silent loss</h1>
+          <p class="lede">For API teams moving between local clients, the CLI transfers requests and reports every changed or unsupported feature.</p>
+          <div class="hero-actions"><a class="stamp-button" href="/demo/">Try it with sample data</a><span>Loads three parcel requests and a populated report.</span></div>
+          <a class="text-link" href="#install">Install the CLI</a>
+          <ul class="trust-list" aria-label="Product facts"><li>Runs locally without an account.</li><li>Strips credential values by default.</li><li>Free core; Pro costs $29 once.</li></ul>
         </div>
         <figure class="hero-figure">
-          <img src="/bridge-notebook.webp" srcset="/bridge-notebook-640.webp 640w, /bridge-notebook.webp 1280w" sizes="(max-width: 920px) calc(100vw - 40px), 50vw" width="1280" height="854" fetchpriority="high" alt="An engineer’s squared notebook showing five API diagram slips crossing a drawn bridge into a checked evidence ledger" />
-          <figcaption>Five dialects in. One inspectable ledger out.</figcaption>
+          <img src="/bridge-notebook.webp" srcset="/bridge-notebook-640.webp 640w, /bridge-notebook.webp 1280w" sizes="(max-width: 920px) calc(100vw - 40px), 50vw" width="1280" height="854" fetchpriority="high" alt="Five API format notes lead into one checked conversion report on squared paper." />
+          <figcaption>Each converted feature receives a named result.</figcaption>
         </figure>
       </section>
 
-      <section class="install-section" id="install" aria-labelledby="install-title">
-        <div><p class="section-no">02 / install</p><h2 id="install-title">One binary. No account.</h2><p>Build from source today; release binaries are ready for the factory’s release pipeline.</p></div>
-        <div class="code-slip"><code id="install-command">cargo install --git https://github.com/B-Divyesh/sf-openapi-collection-bridge</code><button class="copy-button" type="button" data-copy="install-command">Copy</button></div>
-        <pre tabindex="0"><code>ocb convert team.postman_collection.json \
-  --to bruno --output ./team-api
+      <section class="product-section" id="install" aria-labelledby="install-title">
+        <div class="section-heading">
+          <p class="section-no">Install and run</p>
+          <h2 id="install-title">Run the real CLI sample</h2>
+          <p>The bundled demo creates a temporary folder. It writes OpenAPI output and a Markdown evidence report.</p>
+        </div>
+        <div class="terminal-layout">
+          <figure class="terminal-frame">
+            <img src="/ocb-demo.svg" width="960" height="520" alt="Terminal output from ocb demo showing three converted requests, redacted credentials, output, and evidence file paths." />
+            <figcaption>This recording comes from the bundled parcel collection.</figcaption>
+          </figure>
+          <div>
+            <div class="code-slip"><code id="install-command">cargo install --git https://github.com/B-Divyesh/sf-openapi-collection-bridge</code><button class="copy-button" type="button" data-copy="install-command">Copy</button></div>
+            <pre tabindex="0"><code>ocb demo
 
-# team-api/bridge-report.md is written beside the result</code></pre>
-      </section>
-
-      <section class="demo-section ruled-section" id="demo" aria-labelledby="demo-title">
-        <div class="section-heading"><p class="section-no">03 / bench test</p><h2 id="demo-title">Run a local specimen</h2><p>Paste a sample or load a file. This small browser bridge runs entirely on this page; the full CLI handles every documented format.</p></div>
-        <noscript><p class="notice error">JavaScript is required for the local browser specimen. The CLI works without a browser.</p></noscript>
-        <div id="offline-note" class="notice" hidden role="status">Offline: local conversion still works. License checks will retry when you reconnect.</div>
-        <div class="workbench">
-          <div class="source-pane">
-            <div class="field-row">
-              <label for="source-format">Source format</label>
-              <select id="source-format"><option value="openapi">OpenAPI JSON</option><option value="postman">Postman</option><option value="insomnia">Insomnia</option><option value="curl">cURL</option></select>
-            </div>
-            <label for="source-input">Source content</label>
-            <textarea id="source-input" rows="15" spellcheck="false" aria-describedby="source-help source-error"></textarea>
-            <div class="input-tools"><label class="file-button" for="source-file">Load a file</label><input id="source-file" type="file" accept=".json,.yaml,.yml,.txt,.curl" /><span id="source-help">Nothing is uploaded.</span></div>
-            <p id="source-error" class="field-error" role="alert"></p>
-          </div>
-          <div class="bridge-controls" aria-label="Conversion direction"><span aria-hidden="true">→</span><label for="target-format">Destination</label><select id="target-format"><option value="bruno">Bruno</option><option value="postman">Postman</option><option value="insomnia">Insomnia</option><option value="openapi">OpenAPI</option><option value="curl">cURL</option></select><button id="convert-button" class="stamp-button" type="button">Convert locally</button></div>
-          <div class="result-pane" aria-live="polite" aria-atomic="false">
-            <div id="empty-result" class="empty-state"><span aria-hidden="true">↳</span><h3>Evidence appears here</h3><p>Choose a destination, then convert the specimen.</p></div>
-            <div id="conversion-result" hidden>
-              <div class="result-heading"><h3>Migration evidence</h3><button id="download-output" class="copy-button" type="button">Download output</button></div>
-              <div id="evidence-summary" class="evidence-summary"></div>
-              <ul id="finding-list" class="finding-list"></ul>
-              <details><summary>Preview converted output</summary><pre tabindex="0"><code id="output-preview"></code></pre></details>
-            </div>
+ocb convert collection.json \
+  --to bruno \
+  --output ./converted</code></pre>
           </div>
         </div>
       </section>
 
-      <section class="coverage-section" id="coverage" aria-labelledby="coverage-title">
-        <div><p class="section-no">04 / coverage</p><h2 id="coverage-title">No silent blanks</h2><p>Every route gets an evidence row, including destination limits. “Unsupported” is a useful result—not a buried warning.</p></div>
+      <section class="steps-section ruled-section" aria-labelledby="steps-title">
+        <div class="section-heading"><p class="section-no">How it works</p><h2 id="steps-title">Convert, review, then import</h2></div>
+        <ol class="step-list">
+          <li><strong>Choose the source and destination.</strong><span>The CLI detects known files and Bruno folders.</span></li>
+          <li><strong>Convert with credentials removed.</strong><span>Named placeholders replace credential-shaped values by default.</span></li>
+          <li><strong>Review the evidence report.</strong><span>Check preserved, transformed, and unsupported rows before importing.</span></li>
+        </ol>
+      </section>
+
+      <section class="coverage-section" aria-labelledby="coverage-title">
+        <div><p class="section-no">Supported formats</p><h2 id="coverage-title">Move requests among five formats</h2><p>OpenAPI, Postman, Insomnia, Bruno, and cURL can be sources or destinations.</p></div>
         <div class="coverage-ledger" role="table" aria-label="Format coverage">
-          <div class="ledger-row ledger-head" role="row"><span role="columnheader">Semantic</span><span role="columnheader">Inventory</span><span role="columnheader">Evidence</span></div>
-          <div class="ledger-row" role="row"><strong role="cell">Requests + folders</strong><span role="cell">All 5 formats</span><span class="preserved" role="cell">✓ preserved</span></div>
-          <div class="ledger-row" role="row"><strong role="cell">Auth + variables</strong><span role="cell">Named placeholders</span><span class="transformed" role="cell">↻ transformed safely</span></div>
-          <div class="ledger-row" role="row"><strong role="cell">Examples + tests</strong><span role="cell">Where supported</span><span class="unsupported" role="cell">× listed if absent</span></div>
+          <div class="ledger-row ledger-head" role="row"><span role="columnheader">Feature</span><span role="columnheader">Handled</span><span role="columnheader">Reported</span></div>
+          <div class="ledger-row" role="row"><strong role="cell">Requests and folders</strong><span role="cell">Methods, URLs, bodies</span><span class="preserved" role="cell">✓ preserved</span></div>
+          <div class="ledger-row" role="row"><strong role="cell">Authentication and variables</strong><span role="cell">Typed fields and placeholders</span><span class="transformed" role="cell">↻ transformed when needed</span></div>
+          <div class="ledger-row" role="row"><strong role="cell">Examples and tests</strong><span role="cell">Destination dependent</span><span class="unsupported" role="cell">× listed when absent</span></div>
         </div>
       </section>
 
-      <section class="pricing-section ruled-section" id="pricing" aria-labelledby="pricing-title">
-        <div><p class="section-no">05 / support the bridge</p><h2 id="pricing-title">Migrate free. Plan once for $29.</h2><p>Core conversion, evidence reports, safe redaction, and exports stay free. A one-time Pro license unlocks the team migration planner and reusable CI policy templates on this device.</p><p class="merchant-note">Sociobot/Dodo is the merchant of record. No subscription. Refunds revoke the license automatically.</p></div>
+      <section class="limits-section ruled-section" aria-labelledby="limits-title">
+        <div><p class="section-no">Privacy and limits</p><h2 id="limits-title">Know what the tool does not do</h2></div>
+        <ul class="plain-list"><li>It does not execute API requests.</li><li>It does not sync or store collections.</li><li>It makes no conversion network requests.</li><li>Browser demo input clears on reload.</li><li>Destination clients still require a final review.</li></ul>
+      </section>
+
+      <section class="pricing-section" id="pricing" aria-labelledby="pricing-title">
+        <div><p class="section-no">Pricing</p><h2 id="pricing-title">Use the converter free</h2><p>Core conversion, reports, credential removal, and exports stay free. Pro costs $29 once and has no subscription.</p><p>Pro includes a team migration planner and a reusable GitHub Actions policy file.</p><p class="merchant-note">Sociobot/Dodo is the merchant of record. Refunds revoke the license.</p></div>
         <div class="license-sheet">
           <p id="license-status" class="license-status" role="status">Free edition · all core conversion enabled</p>
-          <a id="buy-link" class="stamp-button" href="https://pilot-api.sociobot.in/api/v1/products/openapi-collection-bridge/checkout">Buy Pro once · $29</a>
-          <form id="license-form"><label for="license-input">Have a license? Paste it</label><div class="license-row"><input id="license-input" type="password" autocomplete="off" required /><button type="submit">Verify license</button></div><p id="license-error" class="field-error" role="alert"></p></form>
-          <div id="pro-tools" hidden><h3>Team migration kit unlocked</h3><label for="collection-count">Collections to move</label><input id="collection-count" type="number" min="1" max="500" value="12" /><button id="make-plan" type="button">Build migration checklist</button><pre tabindex="0"><code id="plan-output"></code></pre></div>
+          <a id="buy-link" class="stamp-button" href="https://api.sociobot.in/api/v1/products/openapi-collection-bridge/checkout">Buy Pro once · $29</a>
+          <form id="license-form"><label for="license-input">Have a license? Paste it</label><div class="license-row"><input id="license-input" type="password" autocomplete="off" required aria-describedby="license-error" /><button type="submit">Verify license</button></div><p id="license-error" class="field-error" role="alert"></p></form>
+          <div id="pro-tools" hidden><h3>Pro migration tools</h3><label for="collection-count">Collections to move</label><input id="collection-count" type="number" min="1" max="500" value="12" /><button id="make-plan" type="button">Build migration checklist</button><pre tabindex="0"><code id="plan-output"></code></pre><div class="ci-actions"><button id="download-ci" type="button">Download CI policy</button><button id="copy-ci" type="button">Copy CI policy</button></div><p id="ci-status" role="status"></p></div>
         </div>
       </section>
     </main>
 
-    <footer><p><strong>OpenAPI Collection Bridge</strong><br />Built for API teams who want receipts.</p><div><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="https://github.com/B-Divyesh/sf-openapi-collection-bridge">MIT source</a></div></footer>
+    <footer><p><strong>OpenAPI Collection Bridge</strong><br />Convert API collections and review semantic changes.</p><div><a href="/demo/">Demo</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><span>Built by Param Factory</span><span>v0.1.1</span></div></footer>
   </body>
 </html>

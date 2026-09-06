@@ -2,7 +2,7 @@ use crate::model::*;
 use crate::{ensure_parent, require_requests, slug};
 use anyhow::{Context, Result};
 use serde_json::{json, Map, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
@@ -24,9 +24,30 @@ pub fn export_collection(
 fn export_openapi(collection: &Collection, output: &Path) -> Result<Vec<Finding>> {
     let mut paths = Map::new();
     let mut security_schemes = Map::new();
+    let mut leading_url_variables = BTreeSet::new();
     let mut findings = vec![finding(FindingStatus::Preserved, "requests", "Request methods, paths, headers, query values, and bodies were represented as OpenAPI operations.")];
     for request in &collection.requests {
-        let path = url_path(&request.url);
+        let (path, url_variable) = openapi_path(&request.url);
+        if let Some(variable) = url_variable {
+            leading_url_variables.insert(variable.clone());
+            let has_value = collection
+                .environments
+                .iter()
+                .any(|environment| environment.variables.contains_key(&variable));
+            findings.push(finding(
+                if has_value {
+                    FindingStatus::Transformed
+                } else {
+                    FindingStatus::Unsupported
+                },
+                format!("request '{}' URL variable", request.name),
+                if has_value {
+                    format!("Leading Postman variable '{{{{{variable}}}}}' became the OpenAPI server base; it was removed from the operation path.")
+                } else {
+                    format!("Leading Postman variable '{{{{{variable}}}}}' has no supplied value; the operation path is usable but an OpenAPI server could not be emitted.")
+                },
+            ));
+        }
         let mut parameters = vec![];
         for pair in &request.query {
             parameters.push(json!({"in":"query", "name":pair.name, "schema":{"type":"string", "default":pair.value}}));
@@ -98,10 +119,19 @@ fn export_openapi(collection: &Collection, output: &Path) -> Result<Vec<Finding>
         let entry = paths
             .entry(path)
             .or_insert_with(|| Value::Object(Map::new()));
-        entry
-            .as_object_mut()
-            .unwrap()
-            .insert(request.method.to_ascii_lowercase(), operation);
+        let method = request.method.to_ascii_lowercase();
+        if entry
+            .as_object()
+            .is_some_and(|path_item| path_item.contains_key(&method))
+        {
+            findings.push(finding(
+                FindingStatus::Unsupported,
+                format!("request '{}' duplicate operation", request.name),
+                format!("OpenAPI permits one {method} operation at this path; the earlier request was kept."),
+            ));
+        } else {
+            entry.as_object_mut().unwrap().insert(method, operation);
+        }
     }
     let servers: Vec<_> = collection
         .environments
@@ -110,6 +140,11 @@ fn export_openapi(collection: &Collection, output: &Path) -> Result<Vec<Finding>
             let url = env
                 .variables
                 .get("base_url")
+                .or_else(|| {
+                    leading_url_variables
+                        .iter()
+                        .find_map(|variable| env.variables.get(variable))
+                })
                 .cloned()
                 .unwrap_or_else(|| "{{base_url}}".into());
             let variables: BTreeMap<_, _> = env
@@ -130,7 +165,7 @@ fn export_openapi(collection: &Collection, output: &Path) -> Result<Vec<Finding>
     }
     let doc = json!({
         "openapi":"3.1.0",
-        "info":{"title":collection.name, "version":"1.0.0", "x-generated-by":"openapi-collection-bridge/0.1.0"},
+        "info":{"title":collection.name, "version":"1.0.0", "x-generated-by":format!("openapi-collection-bridge/{}", env!("CARGO_PKG_VERSION"))},
         "servers":servers,
         "paths":paths,
         "components":{"securitySchemes":security_schemes}
@@ -301,7 +336,7 @@ fn export_postman(collection: &Collection, output: &Path) -> Result<Vec<Finding>
                 "name": env.name,
                 "values": values,
                 "_postman_variable_scope": "environment",
-                "_postman_exported_using": "OpenAPI Collection Bridge 0.1.0"
+                "_postman_exported_using": format!("OpenAPI Collection Bridge {}", env!("CARGO_PKG_VERSION"))
             });
             write_json(
                 &parent.join(format!(
@@ -387,7 +422,7 @@ fn export_insomnia(collection: &Collection, output: &Path) -> Result<Vec<Finding
     for env in &collection.environments {
         resources.push(json!({"_id":format!("env_{}", &stable_id(&env.name)[..12]),"_type":"environment","parentId":workspace_id,"name":env.name,"data":env.variables}));
     }
-    let doc = json!({"_type":"export","__export_format":4,"__export_source":"openapi-collection-bridge/0.1.0","resources":resources});
+    let doc = json!({"_type":"export","__export_format":4,"__export_source":format!("openapi-collection-bridge/{}", env!("CARGO_PKG_VERSION")),"resources":resources});
     write_json(output, &doc)?;
     let mut findings = vec![finding(
         FindingStatus::Preserved,
@@ -572,15 +607,52 @@ fn write_json(path: &Path, value: &Value) -> Result<()> {
 fn parse_json_or_string(text: &str) -> Value {
     serde_json::from_str(text).unwrap_or_else(|_| Value::String(text.into()))
 }
-fn url_path(url: &str) -> String {
+fn openapi_path(url: &str) -> (String, Option<String>) {
     let no_query = url.split('?').next().unwrap_or(url);
-    if let Some(rest) = no_query.split_once("://").map(|(_, r)| r) {
-        format!("/{}", rest.split_once('/').map(|(_, p)| p).unwrap_or(""))
+    let (path, leading_variable) = if let Some(rest) = no_query.split_once("://").map(|(_, r)| r) {
+        (
+            format!("/{}", rest.split_once('/').map(|(_, p)| p).unwrap_or("")),
+            None,
+        )
+    } else if let Some(variable_end) = no_query.strip_prefix("{{").and_then(|rest| rest.find("}}"))
+    {
+        let variable = &no_query[2..variable_end + 2];
+        let rest = &no_query[variable_end + 4..];
+        (
+            if rest.is_empty() {
+                "/".into()
+            } else if rest.starts_with('/') {
+                rest.into()
+            } else {
+                format!("/{rest}")
+            },
+            Some(variable.to_owned()),
+        )
     } else if no_query.starts_with('/') {
-        no_query.into()
+        (no_query.into(), None)
     } else {
-        format!("/{no_query}")
+        (format!("/{no_query}"), None)
+    };
+    (postman_path_variables_to_openapi(&path), leading_variable)
+}
+
+fn postman_path_variables_to_openapi(path: &str) -> String {
+    let mut output = String::with_capacity(path.len());
+    let mut rest = path;
+    while let Some(start) = rest.find("{{") {
+        output.push_str(&rest[..start]);
+        let candidate = &rest[start + 2..];
+        let Some(end) = candidate.find("}}") else {
+            output.push_str(&rest[start..]);
+            return output;
+        };
+        output.push('{');
+        output.push_str(&candidate[..end]);
+        output.push('}');
+        rest = &candidate[end + 2..];
     }
+    output.push_str(rest);
+    output
 }
 fn safe_name(input: &str) -> String {
     let s = slug(input).replace('_', "-");
@@ -606,8 +678,14 @@ mod tests {
 
     #[test]
     fn url_paths_are_stable() {
-        assert_eq!(url_path("https://api.test/v1/pets?q=1"), "/v1/pets");
-        assert_eq!(url_path("{{base_url}}/pets"), "/{{base_url}}/pets");
+        assert_eq!(
+            openapi_path("https://api.test/v1/pets?q=1"),
+            ("/v1/pets".into(), None)
+        );
+        assert_eq!(
+            openapi_path("{{base_url}}/pets/{{pet_id}}"),
+            ("/pets/{pet_id}".into(), Some("base_url".into()))
+        );
     }
 
     #[test]

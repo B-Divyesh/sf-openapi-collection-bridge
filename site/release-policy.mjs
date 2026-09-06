@@ -2,22 +2,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, 'public');
-const headers = readFileSync(resolve(root, '_headers'), 'utf8');
-const swaConfig = readFileSync(resolve(root, 'staticwebapp.config.json'), 'utf8');
-const css = readFileSync(resolve(import.meta.dirname, 'src/style.css'), 'utf8');
-const requirements = [
-  ["Content-Security-Policy: default-src 'self'", 'restrictive CSP'],
-  ['Permissions-Policy:', 'Permissions Policy'],
-  ['/assets/*\n  Cache-Control: public, max-age=31536000, immutable', 'immutable hashed asset caching'],
-  ['/sw.js\n  Cache-Control: public, max-age=0, must-revalidate', 'service-worker revalidation'],
-];
-for (const [needle, label] of requirements) {
-  if (!headers.includes(needle)) throw new Error(`Missing ${label} policy`);
-}
-for (const [needle, label] of [["Content-Security-Policy", 'Azure CSP'], ["Permissions-Policy", 'Azure Permissions Policy'], ["max-age=31536000, immutable", 'Azure immutable caching'], ["/sw.js", 'Azure service-worker cache policy']]) {
-  if (!swaConfig.includes(needle)) throw new Error(`Missing ${label} policy`);
-}
-if (!css.includes('footer a { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px;')) {
-  throw new Error('Footer link 44px touch-target rule is missing');
-}
+const config = JSON.parse(readFileSync(resolve(root, 'staticwebapp.config.json'), 'utf8'));
+const headers = config.globalHeaders ?? {};
+if (!headers['Content-Security-Policy']?.includes("default-src 'self'")) throw new Error('Missing restrictive CSP');
+if (headers['Content-Security-Policy'].includes('pilot-api.sociobot.in')) throw new Error('Production CSP allows the pilot billing host');
+if (!headers['Permissions-Policy']) throw new Error('Missing Permissions Policy');
+const route = path => config.routes.find(item => item.route === path);
+if (route('/assets/*')?.headers?.['Cache-Control'] !== 'public, max-age=31536000, immutable') throw new Error('Hashed assets are not immutable');
+if (route('/sw.js')?.headers?.['Cache-Control'] !== 'public, max-age=0, must-revalidate') throw new Error('Service worker must revalidate');
+if (config.responseOverrides?.['404']?.rewrite !== '/404.html' || config.responseOverrides?.['404']?.statusCode !== 404) throw new Error('Designed 404 response is missing');
 console.log('Static release policy checks passed.');

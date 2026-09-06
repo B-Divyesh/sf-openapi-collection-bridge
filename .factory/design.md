@@ -40,3 +40,12 @@ On first reveal, evidence slips settle by 6px over 220ms and the successful stam
 The hero asset is a generated editorial still-life: an overhead engineer’s notebook in which five differently shaped API-format notes converge into one audited ledger, with teal verification ticks and red unsupported marks. It explains neutral translation rather than decorating the page. It contains no legible generated text, logos, people, or UI screenshots. It will be generated with the factory image generator, optimized to WebP under 300 KB, and stored locally under `site/public/`.
 
 Prompt (authored for this product): “Overhead editorial still life for a developer tool landing page, an open squared-paper laboratory notebook on a warm cream desk, five small abstract paper slips with distinct diagram languages flowing through a hand-drawn bridge into one tidy audit ledger, graphite lines, teal verification ticks and a few restrained red pencil exception circles, physical paper fibers, subtle shadows, meticulous technical mood, asymmetrical wide composition with breathing room, no people, no brands, no logos, no legible words, no screen, no gradients, no watermark.” Generator provenance and the resulting file size are recorded in the handoff.
+
+## Shipped asset provenance
+
+- `bridge-notebook.webp` and `bridge-notebook-640.webp` were generated for this product with the recorded prompt, the Param Factory `factory-image` deployment, 1536×1024 source size, and high quality. They are original project assets.
+- `bridge-social.jpg` is a deterministic 1200×630 center crop of `bridge-notebook.webp`. ImageMagick 6 created the local derivative; no new model or external asset was used.
+- `ocb-demo.svg` is a hand-authored terminal recording based on a real `ocb demo` run from this repository. It uses only the product palette and local text.
+- `favicon.svg` is the hand-authored bidirectional request mark. `apple-touch-icon.png` is a 180×180 local rasterization of that mark.
+
+All assets are stored in `site/public/`. No CDN or external asset license is required.

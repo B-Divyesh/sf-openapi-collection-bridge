@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand};
 use openapi_collection_bridge::model::Format;
+use std::fs;
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Parser)]
 #[command(
@@ -16,6 +18,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Convert the bundled sample in a new temporary directory
+    Demo {
+        /// Print the conversion result as JSON
+        #[arg(long)]
+        json: bool,
+    },
     /// Convert a file, Bruno directory, or literal cURL command
     Convert {
         /// Input path, Bruno directory, or quoted cURL command
@@ -75,6 +83,7 @@ fn main() {
 
 fn run(cli: Cli) -> anyhow::Result<i32> {
     match cli.command {
+        Command::Demo { json } => run_demo(json),
         Command::Convert {
             input,
             from,
@@ -155,4 +164,42 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             Ok(0)
         }
     }
+}
+
+fn run_demo(json: bool) -> anyhow::Result<i32> {
+    let nonce = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+    let directory = std::env::temp_dir().join(format!(
+        "openapi-collection-bridge-demo-{}-{nonce}",
+        std::process::id()
+    ));
+    fs::create_dir_all(&directory)?;
+    let input = directory.join("parcel-api.postman_collection.json");
+    let environment = directory.join("development.postman_environment.json");
+    fs::write(
+        &input,
+        include_str!("../examples/parcel-api.postman_collection.json"),
+    )?;
+    fs::write(
+        &environment,
+        include_str!("../examples/development.postman_environment.json"),
+    )?;
+    let output = directory.join("parcel-api.openapi.json");
+    let (result, _) = openapi_collection_bridge::convert(
+        input.to_str().expect("temporary path is valid UTF-8"),
+        Some(Format::Postman),
+        Format::Openapi,
+        &output,
+        &[environment],
+        false,
+    )?;
+    if json {
+        println!("{}", serde_json::to_string_pretty(&result)?);
+    } else {
+        println!("Demo converted 3 sample requests to OpenAPI.");
+        println!("Credentials were replaced with named placeholders.");
+        println!("Output: {}", result.output);
+        println!("Evidence: {}", result.report);
+        println!("Temporary sample directory: {}", directory.display());
+    }
+    Ok(0)
 }

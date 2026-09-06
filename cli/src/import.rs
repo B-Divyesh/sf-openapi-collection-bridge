@@ -344,7 +344,7 @@ fn import_postman(text: &str) -> Result<(Collection, Vec<Finding>)> {
     walk_postman(
         doc.get("item").and_then(Value::as_array).unwrap(),
         &[],
-        None,
+        doc.get("auth"),
         &mut requests,
     );
     if requests.is_empty() {
@@ -402,17 +402,7 @@ fn walk_postman(
         } else {
             raw.clone()
         };
-        let url = request
-            .get("url")
-            .and_then(|v| {
-                if v.is_string() {
-                    v.as_str()
-                } else {
-                    v.get("raw").and_then(Value::as_str)
-                }
-            })
-            .unwrap_or_default()
-            .to_owned();
+        let url = request.get("url").map(postman_url).unwrap_or_default();
         let mut req = Request {
             name: name.into(),
             method: request
@@ -516,6 +506,48 @@ fn walk_postman(
             }
         }
         output.push(req);
+    }
+}
+
+fn postman_url(value: &Value) -> String {
+    if let Some(raw) = value
+        .as_str()
+        .or_else(|| value.get("raw").and_then(Value::as_str))
+    {
+        return raw.to_owned();
+    }
+    let protocol = value
+        .get("protocol")
+        .and_then(Value::as_str)
+        .unwrap_or("https");
+    let host = value
+        .get("host")
+        .and_then(Value::as_array)
+        .map(|parts| {
+            parts
+                .iter()
+                .filter_map(Value::as_str)
+                .collect::<Vec<_>>()
+                .join(".")
+        })
+        .unwrap_or_default();
+    let path = value
+        .get("path")
+        .and_then(Value::as_array)
+        .map(|parts| {
+            parts
+                .iter()
+                .filter_map(Value::as_str)
+                .collect::<Vec<_>>()
+                .join("/")
+        })
+        .unwrap_or_default();
+    if host.is_empty() {
+        String::new()
+    } else if path.is_empty() {
+        format!("{protocol}://{host}")
+    } else {
+        format!("{protocol}://{host}/{path}")
     }
 }
 
@@ -741,7 +773,20 @@ fn import_bruno(path: &Path) -> Result<(Collection, Vec<Finding>)> {
     if path.is_dir() {
         collect_files(root, &mut files)?;
     }
-    files.sort();
+    files.sort_by(|left, right| {
+        let sequence = |path: &Path| {
+            fs::read_to_string(path)
+                .ok()
+                .and_then(|text| block(&text, "meta").map(parse_key_values))
+                .and_then(|values| {
+                    values
+                        .get("seq")
+                        .and_then(|value| value.parse::<usize>().ok())
+                })
+                .unwrap_or(usize::MAX)
+        };
+        sequence(left).cmp(&sequence(right)).then(left.cmp(right))
+    });
     let mut requests = vec![];
     let mut environments = vec![];
     for file in files {
@@ -892,7 +937,8 @@ fn parse_key_values(text: &str) -> BTreeMap<String, String> {
 }
 
 fn import_curl(text: &str) -> Result<(Collection, Vec<Finding>)> {
-    let tokens = shell_words::split(text.trim()).context("invalid cURL shell quoting")?;
+    let command = first_shell_command(text.trim());
+    let tokens = shell_words::split(command).context("invalid cURL shell quoting")?;
     if tokens.first().map(String::as_str) != Some("curl") {
         bail!("cURL input must begin with 'curl'");
     }
@@ -1056,6 +1102,40 @@ fn import_curl(text: &str) -> Result<(Collection, Vec<Finding>)> {
     ))
 }
 
+fn first_shell_command(text: &str) -> &str {
+    let bytes = text.as_bytes();
+    let mut quote = None;
+    let mut escaped = false;
+    for index in 0..bytes.len() {
+        let byte = bytes[index];
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if byte == b'\\' && quote != Some(b'\'') {
+            escaped = true;
+            continue;
+        }
+        if matches!(byte, b'\'' | b'"') {
+            if quote == Some(byte) {
+                quote = None;
+            } else if quote.is_none() {
+                quote = Some(byte);
+            }
+            continue;
+        }
+        if quote.is_none()
+            && (byte == b';'
+                || byte == b'\n'
+                || (byte == b'&' && bytes.get(index + 1) == Some(&b'&'))
+                || (byte == b'|' && bytes.get(index + 1) == Some(&b'|')))
+        {
+            return text[..index].trim_end();
+        }
+    }
+    text
+}
+
 fn str_at<'a>(value: &'a Value, pointer: &str) -> Option<&'a str> {
     value.pointer(pointer).and_then(Value::as_str)
 }
@@ -1079,6 +1159,13 @@ mod tests {
         assert_eq!(c.requests[0].method, "POST");
         assert_eq!(c.requests[0].url, "https://example.test/a");
         assert_eq!(c.requests[0].body.as_ref().unwrap().text, "{\"ok\":true}");
+    }
+
+    #[test]
+    fn curl_stops_before_unquoted_shell_operators() {
+        let (collection, _) =
+            import_curl("curl 'https://example.test/a;b'; touch should-not-run").unwrap();
+        assert_eq!(collection.requests[0].url, "https://example.test/a;b");
     }
 
     #[test]
